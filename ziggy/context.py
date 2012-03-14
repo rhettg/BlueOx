@@ -4,8 +4,8 @@
 ziggy.context
 ~~~~~~~~
 
-This module provides utility functions that are used within Bootstrap
-that are also useful for external consumption.
+This module provides the concept of 'Context' for collecting data that will
+generate a log event.
 
 :copyright: (c) 2012 by Rhett Garber
 :license: ISC, see LICENSE for more details.

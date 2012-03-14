@@ -1,0 +1,62 @@
+#!/bin/python
+
+# -*- coding: utf-8 -*-
+
+"""
+ziggyd
+~~~~~~~~
+
+Main logging daemon for ziggy events.
+
+:copyright: (c) 2012 by Rhett Garber
+:license: ISC, see LICENSE for more details.
+
+"""
+import argparse
+import os
+import io
+import logging
+
+import zmq
+import bson
+
+log = logging.getLogger("ziggy.d")
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--verbose', '-v', dest='verbose', action='append_const', const=True, default=list())
+    parser.add_argument('--host', '-H', dest='host', action='store', default="127.0.0.1")
+    parser.add_argument('--port', '-P', dest='port', type=int, action='store', default=3514)
+    parser.add_argument('--log-path', '-l', dest='log_path', action='store', default="/tmp/ziggy_logs/")
+
+    options = parser.parse_args()
+
+    try:
+        os.makedirs(options.log_path)
+    except OSError:
+        pass
+
+    zmq_context = zmq.Context()
+    collector = zmq_context.socket(zmq.PULL)
+
+    host = options.host
+    if host == "localhost":
+        host = "127.0.0.1"
+
+    collector.bind("tcp://%s:%d" % (options.host, options.port))
+
+    log_files = {}
+    while True:
+        event_data = collector.recv()
+
+        event = bson.loads(event_data)
+
+        channel = event['type']
+        if channel not in log_files:
+            log_files[channel] = io.open(os.path.join(options.log_path, "%s.log" % channel), "wb")
+
+        log_files[channel].write(event_data)
+            
+
+if __name__ == '__main__':
+    main()
