@@ -14,9 +14,12 @@ Main logging daemon for ziggy events.
 """
 import argparse
 import os
+import sys
 import io
 import logging
+import signal
 
+import json
 import zmq
 import bson
 
@@ -25,8 +28,7 @@ log = logging.getLogger("ziggy.d")
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', '-v', dest='verbose', action='append_const', const=True, default=list())
-    parser.add_argument('--host', '-H', dest='host', action='store', default="127.0.0.1")
-    parser.add_argument('--port', '-P', dest='port', type=int, action='store', default=3514)
+    parser.add_argument('--host', '-H', dest='host', action='store', default="127.0.0.1:3514")
     parser.add_argument('--log-path', '-l', dest='log_path', action='store', default="/tmp/ziggy_logs/")
 
     options = parser.parse_args()
@@ -39,23 +41,40 @@ def main():
     zmq_context = zmq.Context()
     collector = zmq_context.socket(zmq.PULL)
 
-    host = options.host
+    def handle_close(signum, frame):
+        log.info("Exiting")
+        collector.close(0)
+        for file in log_files.values():
+            file.close()
+
+    signal.signal(signal.SIGTERM, handle_close)
+
+    host, port = options.host.split(':')
     if host == "localhost":
         host = "127.0.0.1"
 
-    collector.bind("tcp://%s:%d" % (options.host, options.port))
+    port = int(port)
+
+    collector.bind("tcp://%s:%d" % (host, port))
 
     log_files = {}
     while True:
-        event_data = collector.recv()
+        try:
+            event_data = collector.recv()
+        except KeyboardInterrupt, SystemExit:
+            handle_close(None, None)
+            sys.exit(0)
 
         event = bson.loads(event_data)
 
         channel = event['type']
         if channel not in log_files:
-            log_files[channel] = io.open(os.path.join(options.log_path, "%s.log" % channel), "wb")
+            raw_file = 
+            log_files[channel] = io.open(os.path.join(options.log_path, "%s.log" % channel), "ab")
 
         log_files[channel].write(event_data)
+        #log_files[channel].write(json.dumps(event))
+        #log_files[channel].write('\n')
             
 
 if __name__ == '__main__':
