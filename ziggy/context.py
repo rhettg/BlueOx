@@ -14,6 +14,7 @@ generate a log event.
 import time
 import os
 import random
+import struct
 
 from . import utils
 from . import network
@@ -34,7 +35,9 @@ class Context(object):
             self.id = parent_ctx.id
         else:
             # Generate an id if one wasn't provided and we don't have any parents
-            self.id = os.urandom(16).encode('hex')
+            # We're going to encode the time as the front 4 bytes so we have some order to the ids
+            # that could prove useful later on by making sorting a little easier.
+            self.id = (struct.pack(">L", time.time()) + os.urandom(12)).encode('hex')
 
         if parent_ctx and not parent_ctx.enabled:
             self.enabled = False
