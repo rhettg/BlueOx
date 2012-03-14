@@ -35,9 +35,20 @@ def decode_stream(stream):
         data = stream.read(size)
         yield bson.loads(data)
 
-def subscribe_stream(context, host, port, name):
+def subscribe_stream(context, host, port, type_name):
     sock = context.socket(zmq.SUB)
-    sock.setsockopt(zmq.SUBSCRIBE, name or "")
+
+    prefix = False
+    if type_name:
+        if type_name.endswith('*'):
+            prefix = True
+            subscription = type_name[:-1]
+        else:
+            subscription = type_name
+    else:
+        subscription = ""
+
+    sock.setsockopt(zmq.SUBSCRIBE, subscription)
     log.info("Connecting to %s:%d" % (host, port))
     sock.connect("tcp://%s:%d" % (host, port))
 
@@ -45,6 +56,10 @@ def subscribe_stream(context, host, port, name):
         parts = sock.recv_multipart()
         if len(parts) == 2:
             channel, data = parts
+            # If the client only want exact matches, we'll skip this guy.
+            if not prefix and channel != subscription:
+                continue
+
             yield bson.loads(data)
         else:
             log.info("Done receiving")
@@ -54,7 +69,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', '-v', dest='verbose', action='append_const', const=True, default=list())
 
-    parser.add_argument('--name', '-n', dest='name', action='store', default=None)
+    parser.add_argument('--type-name', '-n', dest='type_name', action='store', default=None, help="What event types to display. Can end with '*' for prefix matches.")
     parser.add_argument('--host', '-H', dest='host', action='store', default="127.0.0.1:3513")
     parser.add_argument('--log-path', '-l', dest='log_path', action='store', default=None)
 
@@ -76,12 +91,12 @@ def main():
         if sock in result:
             result = bson.loads(sock.recv())
             host, _ = options.host.split(':')
-            out_stream = subscribe_stream(context, host, result['port'], options.name)
+            out_stream = subscribe_stream(context, host, result['port'], options.type_name)
         else:
             print >>sys.stderr, "Error connecting to server"
             sys.exit(1)
     else:
-        if options.name is not None:
+        if options.type_name is not None:
             parser.error("Can't specify a name from stdin")
             sys.exit(1)
 
