@@ -1,7 +1,30 @@
 Ziggy - A python application logging framework
 =========================
+Installation
+----------------
 
-Application Usage
+Ziggy requires ZeroMQ and Python 2.7
+
+The python library requirements are given `requirements.txt` and is designed to be used with virtualenv.
+
+I expect debian packaging will be developed soon.
+
+Development
+-----------------
+
+Using the magic of Make, virtualenv and pip, setting up your development environment is a snap:
+
+    make dev
+
+This will create a virtualenv in `env` directory. Running the tests is just a simple:
+
+    make test
+
+Or if you are running individual tests, use `testify` directly:
+
+    testify -v tests
+
+Application Integration
 -----------------
 
 Applications emit ziggy events that belong in channels and are part of a larger context.
@@ -49,3 +72,34 @@ based on any level of the context:
 In the above example, only 25% of requests will include the memcache data. If
 the sample argument where `('request.memcache', 0.25)` then 25% of all memcache
 events would be logged.
+
+Event Collection
+-----------------
+
+Events are collected by a ziggy daemon (`ziggyd`) and can be configured in a variety of topologies.
+
+It's recommended that you run a ziggy daemon on each host, and then a master ziggy daemon that collects 
+all the streams together for logging.
+
+So on your local machine, you'd run:
+
+    ziggyd -H localhost:3514 --publish=master:3514
+
+And on the master collection machine, you'd run:
+
+    ziggyd -H localhost:3514 --log-path=/var/log/ziggy/
+
+Logs are stored in BSON format, so you'll need some tooling for doing log analysis. This is easily done with the tool `ziggyview`.
+
+For example:
+
+    cat /var/log/ziggy/request.120310.bson | ziggyview
+
+    ziggyview --log-path=/var/log/ziggy request --start-date=20120313 --end-date=20120315
+
+Where `request` is the channel you want to examine.
+
+You can also connect to `ziggyd` and get a live streaming of log data:
+
+    ziggyview -H localhost:3514 request
+
