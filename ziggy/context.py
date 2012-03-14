@@ -101,18 +101,18 @@ def _remove_context(context):
     del _contexts_by_name[context.name]
     _contexts.remove(context)
 
-def set(*args, **kwargs):
+def current_context():
     try:
-        context = _contexts[-1]
+        return _contexts[-1]
     except IndexError:
-        pass
-    else:
+        return None
+
+def set(*args, **kwargs):
+    context = current_context()
+    if context:
         context.set(*args, **kwargs)
 
 def append(*args, **kwargs):
-    try:
-        context = _contexts[-1]
-    except IndexError:
-        pass
-    else:
+    context = current_context()
+    if context:
         context.append(*args, **kwargs)

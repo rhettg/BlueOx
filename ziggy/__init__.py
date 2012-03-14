@@ -21,6 +21,7 @@ from . import utils
 from . import network
 from .context import Context, set, append
 from .errors import Error
+from .timer import timeit
 
 def configure(host, port):
     network.init(host, port)
