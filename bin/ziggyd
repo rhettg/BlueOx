@@ -25,57 +25,130 @@ import bson
 
 log = logging.getLogger("ziggy.d")
 
+def setup_logging(options):
+    if len(options.verbose) > 1:
+        level = logging.DEBUG
+    elif options.verbose:
+        level = logging.INFO
+    else:
+        level = logging.WARNING
+    
+    log_format = "%(asctime)s %(levelname)s:%(name)s: %(message)s"
+    logging.basicConfig(level=level, format=log_format, stream=sys.stdout)
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', '-v', dest='verbose', action='append_const', const=True, default=list())
-    parser.add_argument('--host', '-H', dest='host', action='store', default="127.0.0.1:3514")
-    parser.add_argument('--log-path', '-l', dest='log_path', action='store', default="/tmp/ziggy_logs/")
+
+    parser.add_argument('--control', '-t', dest='control', action='store', default="127.0.0.1:3513")
+    parser.add_argument('--collect', '-c', dest='collect', action='store', default="127.0.0.1:3514")
+    parser.add_argument('--forward', '-r', dest='forward', action='store', default=None)
+
+    parser.add_argument('--log-path', '-l', dest='log_path', action='store', default=None)
 
     options = parser.parse_args()
 
-    try:
-        os.makedirs(options.log_path)
-    except OSError:
-        pass
+    setup_logging(options)
+
+    def handle_sigterm(signum, frame):
+        log.info("Exiting")
+        continue_running = True
+
+    signal.signal(signal.SIGTERM, handle_sigterm)
+
+    if options.log_path:
+        try:
+            os.makedirs(options.log_path)
+        except OSError:
+            pass
 
     zmq_context = zmq.Context()
-    collector = zmq_context.socket(zmq.PULL)
+    poller = zmq.Poller()
 
-    def handle_close(signum, frame):
-        log.info("Exiting")
-        collector.close(0)
-        for file in log_files.values():
-            file.close()
+    log.info("Initializing control port %s", options.control)
+    control_sock = zmq_context.socket(zmq.REP)
+    control_sock.bind("tcp://%s" % (options.control,))
+    poller.register(control_sock, zmq.POLLIN)
 
-    signal.signal(signal.SIGTERM, handle_close)
+    log.info("Initializing collector port %s", options.collect)
+    collector_sock = zmq_context.socket(zmq.PULL)
+    collector_sock.bind("tcp://%s" % options.collect)
+    poller.register(collector_sock, zmq.POLLIN)
 
-    host, port = options.host.split(':')
-    if host == "localhost":
-        host = "127.0.0.1"
+    streamer_sock = zmq_context.socket(zmq.PUB)
+    host, _ = options.control.split(':')
+    streamer_sock_port = streamer_sock.bind_to_random_port("tcp://%s" % host)
+    log.info("Streaming port bound to %s:%d", host, streamer_sock_port)
 
-    port = int(port)
-
-    collector.bind("tcp://%s:%d" % (host, port))
+    forward_sock = None
+    if options.forward:
+        log.info("Inializing forwarding socket to %s", options.forward)
+        forward_sock = zmq_context.socket(zmq.PUSH)
+        forward_sock.connect("tcp://%s" % options.forward)
+        forward_sock.hwm = 1000
 
     log_files = {}
-    while True:
+    continue_running = True
+    log.info("Starting IO Loop")
+    while continue_running:
+        log.debug("Poll")
         try:
-            event_data = collector.recv()
+            ready = dict(poller.poll())
         except KeyboardInterrupt, SystemExit:
-            handle_close(None, None)
-            sys.exit(0)
+            continue_running = False
+            break
 
-        event = bson.loads(event_data)
+        log.debug("Poller returned: %r", ready)
 
-        channel = event['type']
-        if channel not in log_files:
-            raw_file = 
-            log_files[channel] = io.open(os.path.join(options.log_path, "%s.log" % channel), "ab")
+        if collector_sock in ready:
+            event_data = collector_sock.recv()
 
-        log_files[channel].write(event_data)
-        #log_files[channel].write(json.dumps(event))
-        #log_files[channel].write('\n')
+            # We may have subscribers to our streaming feed
+            streamer_sock.send(event_data)
+
+            # If we are forwarding our data to another host, do so
+            if forward_sock:
+                try:
+                    forard_sock.send(event_data, zmq.NOBLOCK)
+                except zmq.ZMQError, e:
+                    log.error("Error forwarding event data, buffer possibly overflowed: %r", e)
+
+            # We have been configured to log data to log files.
+            if options.log_path:
+                event = bson.loads(event_data)
+
+                channel = event['type']
+                if channel not in log_files:
+                    log.info("opening log file for %s", channel)
+                    log_files[channel] = io.open(os.path.join(options.log_path, "%s.log" % channel), "ab")
+
+                log_files[channel].write(event_data)
+        elif control_sock in ready:
+            control_data = control_sock.recv()
+            request = bson.loads(control_data)
+            log.info("Received control request: %r", request)
             
+            if request['cmd'] == "SOCK_STREAM":
+                control_sock.send(bson.dumps({'port': streamer_sock_port}))
+            elif request['cmd'] == "SOCK_COLLECT":
+                _, port = options.collect.split(':')
+                control_sock.send(bson.dumps({'port': int(port)}))
+            elif request['cmd'] == 'STATUS':
+                control_sock.send(bson.dumps({'ok': True}))
+            elif request['cmd'] == 'SHUTDOWN':
+                control_sock.send(bson.dumps({'ok': True}))
+                continue_running = False
+            else:
+                control_sock.send(bson.dumps({'error': "Unknown Command"}))
+            
+    collector_sock.close(0)
+    control_sock.close(0)
+    streamer_sock.close(0)
+
+    for file in log_files.values():
+        file.close()
+
+    sys.exit(0)
 
 if __name__ == '__main__':
     main()

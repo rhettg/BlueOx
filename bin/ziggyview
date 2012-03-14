@@ -4,20 +4,53 @@ import io
 import struct
 
 import bson
+import zmq
 
-def main():
-    stdin = io.open(sys.stdin.fileno(), mode='rb', closefd=False)
+def decode_stream(stream):
     while True:
         # BSON is encoded with a 32-bit int size in bytes of the structure as
         # the first two bytes.  We're going to peek at that size (using the
         # magic of buffered io), then load them up one structure at a time
-        size_data = stdin.peek(2)[:2]
+        size_data = stream.peek(2)[:2]
         if not size_data:
             break
 
         size = struct.unpack("H", size_data)[0]
-        data = stdin.read(size)
-        print bson.loads(data)
+        data = stream.read(size)
+        yield bson.loads(data)
+
+def subscribe_stream(context, host, port):
+    sock = context.socket(zmq.SUB)
+    sock.setsockopt(zmq.SUBSCRIBE, "")
+    print "Connecting to %s:%d" % (host, port)
+    sock.connect("tcp://%s:%d" % (host, port))
+
+    while True:
+        print bson.loads(sock.recv())
+
+def main():
+    #stdin = io.open(sys.stdin.fileno(), mode='rb', closefd=False)
+    #for line in decode_stream(stdin):
+        #print line
+
+    context = zmq.Context()
+    poller = zmq.Poller()
+    sock = context.socket(zmq.REQ)
+    sock.connect("tcp://127.0.0.1:3513")
+    poller.register(sock, zmq.POLLIN)
+
+    sock.send(bson.dumps({'cmd': 'SOCK_STREAM'}))
+
+    result = dict(poller.poll(5000))
+    if sock in result:
+        result = bson.loads(sock.recv())
+        subscribe_stream(context, "127.0.0.1", result['port'])
+    else:
+        print >>sys.stderr, "Error connecting to server"
+        sys.exit(1)
+
+
+
 
 if __name__ == '__main__':
     main()

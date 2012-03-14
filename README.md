@@ -36,6 +36,7 @@ Events also have an id that can be used to tie them together.
 
 For example, in a web application, an application might choose the use ziggy as follows:
 
+
     def handle(request):
         with ziggy.Context('request', unique_id):
             ziggy.set('user_agent', self.headers['UserAgent'])
@@ -78,6 +79,16 @@ In the above example, only 25% of requests will include the memcache data. If
 the sample argument where `('request.memcache', 0.25)` then 25% of all memcache
 events would be logged.
 
+### Configuration
+
+If ziggy has not been explicitly configured, all the calls to ziggy will essentially be no-ops. This is
+rather useful in testing contexts so as to not generate a bunch of bogus data.
+
+For production use, you'll need to set the collection host and port:
+
+    ziggy.configure("127.0.0.1", 3514)
+
+
 Event Collection
 -----------------
 
@@ -89,11 +100,11 @@ result in any data loss as the local instances would just queue up their events.
 
 So on your local machine, you'd run:
 
-    ziggyd -H localhost:3514 --publish=master:3514
+    ziggyd --forward=master:3514
 
 And on the master collection machine, you'd run:
 
-    ziggyd -H localhost:3514 --log-path=/var/log/ziggy/
+    ziggyd --collect="*:3514" --log-path=/var/log/ziggy/
 
 Logs are stored in BSON format, so you'll need some tooling for doing log analysis. This is easily done with the tool `ziggyview`.
 
@@ -107,5 +118,40 @@ Where `request` is the channel you want to examine.
 
 You can also connect to `ziggyd` and get a live streaming of log data:
 
-    ziggyview -H localhost:3514 request
+    ziggyview -H localhost:3513 request
+
+### A Note About Ports
+
+There are several types of network ports in use with Ziggy:
+
+  1. Control Port (default 127.0.0.1:3513)
+  1. Collection Port (default 127.0.0.1:3514)
+  1. Streaming Port (no default, randomonly assigned)
+
+Both the Control and Collection ports are configurable from the command line.
+
+When configuring forwarding between ziggyd instances, you'll want to always use
+the collection port. 
+
+When configuring an application to send data to a ziggyd instance, you'll want
+to use the collection port as well.
+
+For administrative (and `ziggyview` work) you'll use the control port. The
+control port (and ziggy administrative interface) can be used to discover all
+the other ports. The reason the collection port must be configured explicitly
+for actual logging purposes is to better handle reconnects and failures.
+
+
+Administration
+---------------
+Use the `ziggyctl` tool to collect useful stats or make other adjustments to a running ziggyd instance.
+
+For example:
+
+    ziggyctl status
+
+or
+
+    ziggyctl shutdown
+
 
