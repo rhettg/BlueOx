@@ -1,0 +1,24 @@
+#!/bin/python
+import sys
+
+import zmq
+import bson
+
+def main():
+    context = zmq.Context()
+    poller = zmq.Poller()
+    sock = context.socket(zmq.REQ)
+    sock.connect("tcp://127.0.0.1:3513")
+    poller.register(sock, zmq.POLLIN)
+
+    sock.send(bson.dumps({'cmd': 'STATUS'}))
+
+    result = dict(poller.poll(5000))
+    if sock in result:
+        print sock.recv()
+    else:
+        print >>sys.stderr, "Error connecting to server"
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
