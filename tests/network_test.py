@@ -43,7 +43,8 @@ class NetworkSendTestCase(TestCase):
 
         raw_data = self.server.recv()
         data = bson.loads(raw_data)
-        assert_equal(data['_id'], 1)
-        assert_equal(utils.get_deep(data, "bar.baz"), 10.0)
+        assert_equal(data['id'], 1)
+        assert_equal(data['type'], 'test')
+        assert_equal(utils.get_deep(data['body'], "bar.baz"), 10.0)
 
 

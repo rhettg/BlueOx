@@ -33,7 +33,7 @@ def init(host, port):
 def send(context):
     if _zmq_socket is not None:
         try:
-            _zmq_socket.send(bson.dumps(context.data), zmq.NOBLOCK)
+            _zmq_socket.send(bson.dumps(context.to_dict()), zmq.NOBLOCK)
         except zmq.ZMQError, e:
             log.exception("Failed sending ziggy event, buffer full?")
     else:

@@ -11,15 +11,17 @@ that are also useful for external consumption.
 :license: ISC, see LICENSE for more details.
 
 """
+import time
 
 from . import utils
 from . import network
 
 class Context(object):
-    __slots__ = ["name", "data", "id", "_writable"]
+    __slots__ = ["name", "data", "id", "_writable", "start_time"]
     def __init__(self, name, *args):
         self.name = name
         self.data = {}
+        self.start_time = time.time()
 
         # Figure out an id for our context. It could be provided to us, 
         # or it could need to be inhertied from our parent
@@ -32,9 +34,6 @@ class Context(object):
             parent_ctx = _get_context(utils.parse_key(name)[:-1])
             if parent_ctx:
                 self.id = parent_ctx.id
-
-        if self.id:
-            self.data['_id'] = self.id
 
         self._writable = False
 
@@ -67,6 +66,14 @@ class Context(object):
         existing_value.append(value)
         if len(existing_value) == 1:
             utils.set_deep(self.data, key, existing_value)
+
+    def to_dict(self):
+        return {'id': self.id,
+                'type': self.name,
+                'start_time': self.start_time,
+                'end_time': time.time(),
+                'body': self.data
+               }
 
     def __enter__(self):
         _add_context(self)
