@@ -1,5 +1,6 @@
 Ziggy - A python application logging framework
 =========================
+
 Installation
 ----------------
 
@@ -27,7 +28,11 @@ Or if you are running individual tests, use `testify` directly:
 Application Integration
 -----------------
 
-Applications emit ziggy events that belong in channels and are part of a larger context.
+Applications emit ziggy events by using a context manager and globally accessible ziggy functions.
+
+Events have a type, which indicates what will be ultimately logged together.
+
+Events also have an id that can be used to tie them together.
 
 For example, in a web application, an application might choose the use ziggy as follows:
 
@@ -79,7 +84,8 @@ Event Collection
 Events are collected by a ziggy daemon (`ziggyd`) and can be configured in a variety of topologies.
 
 It's recommended that you run a ziggy daemon on each host, and then a master ziggy daemon that collects 
-all the streams together for logging.
+all the streams together for logging. In this configuration, failure of the centralized collector would not
+result in any data loss as the local instances would just queue up their events.
 
 So on your local machine, you'd run:
 
