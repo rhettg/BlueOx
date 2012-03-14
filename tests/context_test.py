@@ -34,3 +34,28 @@ class ModuleLevelTestCase(TestCase):
 class EmptyModuleLevelTestCase(TestCase):
     def test(self):
         ziggy.set('foo', True)
+
+class SampleTestCase(TestCase):
+    def test(self):
+        enabled = []
+        for _ in range(100):
+            context = ziggy.Context('test', 5, sample=('test', 0.25))
+            enabled.append(1 if context.enabled else 0)
+        
+        assert 40 > sum(enabled) > 15
+
+        
+class ParentSampleTestCase(TestCase):
+    def test(self):
+        enabled = []
+        for _ in range(100):
+            parent_context = ziggy.Context('test', 5)
+            with parent_context:
+                sub_enabled = []
+                for _ in range(10):
+                    context = ziggy.Context('test.sub', sample=('test', 0.25))
+                    sub_enabled.append(1 if context.enabled else 0)
+                    enabled.append(1 if context.enabled else 0)
+                assert all(sub_enabled) or not any(sub_enabled)
+
+        assert 400 > sum(enabled) > 150

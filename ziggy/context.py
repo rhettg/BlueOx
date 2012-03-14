@@ -12,28 +12,36 @@ generate a log event.
 
 """
 import time
+import random
 
 from . import utils
 from . import network
 
 class Context(object):
-    __slots__ = ["name", "data", "id", "_writable", "start_time"]
-    def __init__(self, name, *args):
+    __slots__ = ["name", "data", "id", "_writable", "start_time", "_sample_checks", "enabled"]
+    def __init__(self, name, id=None, sample=None):
         self.name = name
         self.data = {}
         self.start_time = time.time()
+        self._sample_checks = {}
 
-        # Figure out an id for our context. It could be provided to us, 
-        # or it could need to be inhertied from our parent
-        self.id = None
-        if len(args) > 1:
-            self.id = args
-        elif len(args) == 1:
-            self.id = args[0]
+        parent_ctx = _get_context(utils.parse_key(name)[:-1])
+
+        if id is not None:
+            self.id = id
+        elif parent_ctx:
+            self.id = parent_ctx.id
+
+        if parent_ctx and not parent_ctx.enabled:
+            self.enabled = False
+        elif sample:
+            sample_name, rate = sample
+            if sample_name == name:
+                self.enabled = bool(random.random() <= rate)
+            else:
+                self.enabled = _get_context(sample_name).sampled_for(name, rate)
         else:
-            parent_ctx = _get_context(utils.parse_key(name)[:-1])
-            if parent_ctx:
-                self.id = parent_ctx.id
+            self.enabled = True
 
         self._writable = False
 
@@ -41,6 +49,11 @@ class Context(object):
     def writable(self):
         """Indicates the contest is open and can be written to"""
         return self._writable
+
+    def sampled_for(self, name, rate):
+        if name not in self._sample_checks:
+            self._sample_checks[name] = bool(random.random() <= rate)
+        return self._sample_checks[name]
 
     def set(self, key, *args, **kwargs):
         if not self.writable:
@@ -83,7 +96,8 @@ class Context(object):
     def __exit__(self, type, value, traceback):
         self._writable = False
         _remove_context(self)
-        network.send(self)
+        if self.enabled:
+            network.send(self)
 
 
 _contexts = []
