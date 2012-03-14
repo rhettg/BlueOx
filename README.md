@@ -10,21 +10,6 @@ The python library requirements are given `requirements.txt` and is designed to 
 
 I expect debian packaging will be developed soon.
 
-Development
------------------
-
-Using the magic of Make, virtualenv and pip, setting up your development environment is a snap:
-
-    make dev
-
-This will create a virtualenv in `env` directory. Running the tests is just a simple:
-
-    make test
-
-Or if you are running individual tests, use `testify` directly:
-
-    testify -v tests
-
 Application Integration
 -----------------
 
@@ -106,19 +91,23 @@ And on the master collection machine, you'd run:
 
     ziggyd --collect="*:3514" --log-path=/var/log/ziggy/
 
-Logs are stored in BSON format, so you'll need some tooling for doing log analysis. This is easily done with the tool `ziggyview`.
+Logs are stored in BSON format, so you'll need some tooling for doing log
+analysis. This is easily done with the tool `ziggyview`.
 
 For example:
 
     cat /var/log/ziggy/request.120310.bson | ziggyview
 
-    ziggyview --log-path=/var/log/ziggy request --start-date=20120313 --end-date=20120315
+    ziggyview --log-path=/var/log/ziggy --type-name="request" --start-date=20120313 --end-date=20120315
 
 Where `request` is the channel you want to examine.
 
 You can also connect to `ziggyd` and get a live streaming of log data:
 
-    ziggyview -H localhost:3513 request
+    ziggyview -H localhost:3513 --type-name="request*"
+
+Note the use of '*' to indicate a prefix query for the type filter. This will
+return all events with a type that begins with 'request'
 
 ### A Note About Ports
 
@@ -154,4 +143,19 @@ or
 
     ziggyctl shutdown
 
+
+Development
+-----------------
+
+Using the magic of Make, virtualenv and pip, setting up your development environment is a snap:
+
+    make dev
+
+This will create a virtualenv in `env` directory. Running the tests is just a simple:
+
+    make test
+
+Or if you are running individual tests, use `testify` directly:
+
+    testify -v tests
 
