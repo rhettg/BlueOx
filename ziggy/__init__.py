@@ -1,30 +1,24 @@
 # -*- coding: utf-8 -*-
 
-# ___.                  __            __
-# \_ |__   ____   _____/  |_  _______/  |_____________  ______
-#  | __ \ /  _ \ /  _ \   __\/  ___/\   __\_  __ \__  \ \____ \
-#  | \_\ (  <_> |  <_> )  |  \___ \  |  |  |  | \// __ \|  |_> >
-#  |___  /\____/ \____/|__| /____  > |__|  |__|  (____  /   __/
-#      \/                        \/                   \/|__|
-
-
 """
-bootstrap
+Ziggy
 ~~~~~~~~
 
-:copyright: (c) 2012 by Firstname Lastname.
+:copyright: (c) 2012 by Rhett Garber
 :license: ISC, see LICENSE for more details.
 
 """
 
-__title__ = 'bootstrap'
+__title__ = 'ziggy'
 __version__ = '0.0.1'
 __build__ = 0
-__author__ = 'Firstname Lastname'
+__author__ = 'Rhett Garber'
 __license__ = 'ISC'
-__copyright__ = 'Copyright 2012 Firstname Lastname'
+__copyright__ = 'Copyright 2012 Rhett Garber'
 
 
 from . import utils
-from .models import World
-from .errors import BootstrapError
+from .context import Context, set, append
+from .errors import Error
+
+

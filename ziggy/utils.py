@@ -11,19 +11,33 @@ This module provides utility functions that are used within Ziggy
 
 """
 
-class ParsedKey(list):
+class ParsedKey(object):
     def __init__(self, value):
+        self.elems = []
         if '.' in value:
             for part in value.split('.'):
                 try:
-                    self.append(int(part))
+                    self.elems.append(int(part))
                 except ValueError:
-                    self.append(part)
+                    self.elems.append(part)
         else:
-            self.append(value)
+            self.elems.append(value)
+
+    def __getitem__(self, key):
+        return self.elems[key]
+
+    def __getslice__(self, i, j, seq=None):
+        usable_elems = self.elems[i:j:seq]
+        if usable_elems:
+            return ParsedKey('.'.join((str(v) for v in usable_elems)))
+        else:
+            return []
+
+    def __len__(self):
+        return len(self.elems)
 
     def __str__(self):
-        return '.'.join((str(v) for v in self))
+        return '.'.join((str(v) for v in self.elems))
 
 def parse_key(key):
     return ParsedKey(key)

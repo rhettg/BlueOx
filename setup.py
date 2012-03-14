@@ -25,7 +25,7 @@ setup(
     author='Rhett Garber',
     url='http://github.com/rhettg/Ziggy',
     package_data={'': ['LICENSE', 'NOTICE']},
-    license=bootstrap.__license__,
+    license=ziggy.__license__,
     #packages=find_packages()
     packages=['ziggy']
 )
