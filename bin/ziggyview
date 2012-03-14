@@ -1,10 +1,26 @@
 #!/bin/python
+import argparse
 import sys
 import io
 import struct
+import logging
 
 import bson
 import zmq
+
+log = logging.getLogger('ziggyview')
+
+def setup_logging(options):
+    if len(options.verbose) > 1:
+        level = logging.DEBUG
+    elif options.verbose:
+        level = logging.INFO
+    else:
+        level = logging.WARNING
+    
+    log_format = "%(asctime)s %(levelname)s:%(name)s: %(message)s"
+    logging.basicConfig(level=level, format=log_format, stream=sys.stdout)
+
 
 def decode_stream(stream):
     while True:
@@ -19,38 +35,66 @@ def decode_stream(stream):
         data = stream.read(size)
         yield bson.loads(data)
 
-def subscribe_stream(context, host, port):
+def subscribe_stream(context, host, port, name):
     sock = context.socket(zmq.SUB)
-    sock.setsockopt(zmq.SUBSCRIBE, "")
-    print "Connecting to %s:%d" % (host, port)
+    sock.setsockopt(zmq.SUBSCRIBE, name or "")
+    log.info("Connecting to %s:%d" % (host, port))
     sock.connect("tcp://%s:%d" % (host, port))
 
     while True:
-        print bson.loads(sock.recv())
+        parts = sock.recv_multipart()
+        if len(parts) == 2:
+            channel, data = parts
+            yield bson.loads(data)
+        else:
+            log.info("Done receiving")
+            break
 
 def main():
-    #stdin = io.open(sys.stdin.fileno(), mode='rb', closefd=False)
-    #for line in decode_stream(stdin):
-        #print line
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--verbose', '-v', dest='verbose', action='append_const', const=True, default=list())
 
-    context = zmq.Context()
-    poller = zmq.Poller()
-    sock = context.socket(zmq.REQ)
-    sock.connect("tcp://127.0.0.1:3513")
-    poller.register(sock, zmq.POLLIN)
+    parser.add_argument('--name', '-n', dest='name', action='store', default=None)
+    parser.add_argument('--host', '-H', dest='host', action='store', default="127.0.0.1:3513")
+    parser.add_argument('--log-path', '-l', dest='log_path', action='store', default=None)
 
-    sock.send(bson.dumps({'cmd': 'SOCK_STREAM'}))
+    options = parser.parse_args()
 
-    result = dict(poller.poll(5000))
-    if sock in result:
-        result = bson.loads(sock.recv())
-        subscribe_stream(context, "127.0.0.1", result['port'])
+    setup_logging(options)
+    if sys.stdin.isatty():
+        log.info("Loading stream from ziggyd")
+
+        context = zmq.Context()
+        poller = zmq.Poller()
+        sock = context.socket(zmq.REQ)
+        sock.connect("tcp://%s" % options.host)
+        poller.register(sock, zmq.POLLIN)
+
+        sock.send(bson.dumps({'cmd': 'SOCK_STREAM'}))
+
+        result = dict(poller.poll(5000))
+        if sock in result:
+            result = bson.loads(sock.recv())
+            host, _ = options.host.split(':')
+            out_stream = subscribe_stream(context, host, result['port'], options.name)
+        else:
+            print >>sys.stderr, "Error connecting to server"
+            sys.exit(1)
     else:
-        print >>sys.stderr, "Error connecting to server"
-        sys.exit(1)
+        if options.name is not None:
+            parser.error("Can't specify a name from stdin")
+            sys.exit(1)
 
+        log.info("Loading stream from stdin")
+        stdin = io.open(sys.stdin.fileno(), mode='rb', closefd=False)
+        out_stream = decode_stream(stdin)
 
+    for line in out_stream:
+        print line
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except (KeyboardInterrupt, SystemExit):
+        pass

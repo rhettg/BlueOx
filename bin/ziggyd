@@ -102,8 +102,12 @@ def main():
 
         if collector_sock in ready:
             event_data = collector_sock.recv()
+            event = bson.loads(event_data)
 
             # We may have subscribers to our streaming feed
+            # Clients should expect two messages, the name of the channel and the actual channel data
+            # This allows for subscribing to only certain prefixes of the type
+            streamer_sock.send(event['type'], zmq.SNDMORE)
             streamer_sock.send(event_data)
 
             # If we are forwarding our data to another host, do so
@@ -115,7 +119,6 @@ def main():
 
             # We have been configured to log data to log files.
             if options.log_path:
-                event = bson.loads(event_data)
 
                 channel = event['type']
                 if channel not in log_files:
