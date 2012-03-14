@@ -1,0 +1,5 @@
+testify
+pep8
+pyflakes
+pyzmq
+bson
