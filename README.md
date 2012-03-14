@@ -17,13 +17,13 @@ Applications emit ziggy events by using a context manager and globally accessibl
 
 Events have a type, which indicates what will be ultimately logged together.
 
-Events also have an id that can be used to tie them together.
+Events also have an id that can be used to tie them together with other related events.
 
 For example, in a web application, an application might choose the use ziggy as follows:
 
 
     def handle(request):
-        with ziggy.Context('request', unique_id):
+        with ziggy.Context('request'):
             ziggy.set('user_agent', self.headers['UserAgent'])
 
             with ziggy.timeit('request_time'):
@@ -36,8 +36,8 @@ For example, in a web application, an application might choose the use ziggy as 
 The above sample would generate one event that contains all the details about a
 specific request.
 
-Contexts can also be heirarchical. This means you can generate sub-events that
-are related to the parent event and can be joined together in post-processing.
+Contexts can be heirarchical. This means you can generate sub-events that
+are related to the parent event and can be joined together in post-processing by the common id they share.
 
 For example, inside some application code (in `do_stuff()` above), you might execute some sql queries.
 
@@ -51,6 +51,8 @@ For example, inside some application code (in `do_stuff()` above), you might exe
 
 Each SQL query would then be logged as a seperate event. However, each event
 will have the unique id provided by the parent `request` context.
+
+You can provide you're own id or allow ziggy to autogenerate one for the top-level context.
 
 Ziggy also provides the ability to do sampling. This means only a set
 percentage of generate events will actually be logged. You can choose sampling

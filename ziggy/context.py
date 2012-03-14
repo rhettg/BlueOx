@@ -12,6 +12,7 @@ generate a log event.
 
 """
 import time
+import os
 import random
 
 from . import utils
@@ -19,18 +20,21 @@ from . import network
 
 class Context(object):
     __slots__ = ["name", "data", "id", "_writable", "start_time", "_sample_checks", "enabled"]
-    def __init__(self, name, id=None, sample=None):
-        self.name = name
+    def __init__(self, type_name, id=None, sample=None):
+        self.name = type_name
         self.data = {}
         self.start_time = time.time()
         self._sample_checks = {}
 
-        parent_ctx = _get_context(utils.parse_key(name)[:-1])
+        parent_ctx = _get_context(utils.parse_key(type_name)[:-1])
 
         if id is not None:
             self.id = id
         elif parent_ctx:
             self.id = parent_ctx.id
+        else:
+            # Generate an id if one wasn't provided and we don't have any parents
+            self.id = os.urandom(16).encode('hex')
 
         if parent_ctx and not parent_ctx.enabled:
             self.enabled = False
@@ -39,7 +43,7 @@ class Context(object):
             if sample_name == name:
                 self.enabled = bool(random.random() <= rate)
             else:
-                self.enabled = _get_context(sample_name).sampled_for(name, rate)
+                self.enabled = _get_context(sample_name).sampled_for(type_name, rate)
         else:
             self.enabled = True
 
