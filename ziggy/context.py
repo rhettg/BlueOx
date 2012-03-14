@@ -7,7 +7,7 @@ ziggy.context
 This module provides utility functions that are used within Bootstrap
 that are also useful for external consumption.
 
-:copyright: (c) 2012 by Firstname Lastname.
+:copyright: (c) 2012 by Rhett Garber
 :license: ISC, see LICENSE for more details.
 
 """
@@ -15,6 +15,7 @@ that are also useful for external consumption.
 from . import utils
 
 class Context(object):
+    __slots__ = ["name", "data", "id", "_writable"]
     def __init__(self, name, *args):
         self.name = name
         self.data = {}
@@ -92,7 +93,17 @@ def _remove_context(context):
     _contexts.remove(context)
 
 def set(*args, **kwargs):
-    context = _contexts[-1].set(*args, **kwargs)
+    try:
+        context = _contexts[-1]
+    except IndexError:
+        pass
+    else:
+        context.set(*args, **kwargs)
 
 def append(*args, **kwargs):
-    context = _contexts[-1].append(*args, **kwargs)
+    try:
+        context = _contexts[-1]
+    except IndexError:
+        pass
+    else:
+        context.append(*args, **kwargs)

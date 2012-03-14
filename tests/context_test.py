@@ -30,3 +30,7 @@ class ModuleLevelTestCase(TestCase):
     def test(self):
         with ziggy.Context('test', 5):
             ziggy.set('foo', True)
+
+class EmptyModuleLevelTestCase(TestCase):
+    def test(self):
+        ziggy.set('foo', True)
