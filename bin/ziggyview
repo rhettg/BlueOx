@@ -1,0 +1,23 @@
+#!/bin/python
+import sys
+import io
+import struct
+
+import bson
+
+def main():
+    stdin = io.open(sys.stdin.fileno(), mode='rb', closefd=False)
+    while True:
+        # BSON is encoded with a 32-bit int size in bytes of the structure as
+        # the first two bytes.  We're going to peek at that size (using the
+        # magic of buffered io), then load them up one structure at a time
+        size_data = stdin.peek(2)[:2]
+        if not size_data:
+            break
+
+        size = struct.unpack("H", size_data)[0]
+        data = stdin.read(size)
+        print bson.loads(data)
+
+if __name__ == '__main__':
+    main()
