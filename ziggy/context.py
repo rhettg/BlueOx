@@ -13,6 +13,7 @@ that are also useful for external consumption.
 """
 
 from . import utils
+from . import network
 
 class Context(object):
     __slots__ = ["name", "data", "id", "_writable"]
@@ -75,6 +76,7 @@ class Context(object):
     def __exit__(self, type, value, traceback):
         self._writable = False
         _remove_context(self)
+        network.send(self)
 
 
 _contexts = []

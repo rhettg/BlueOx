@@ -18,7 +18,9 @@ __copyright__ = 'Copyright 2012 Rhett Garber'
 
 
 from . import utils
+from . import network
 from .context import Context, set, append
 from .errors import Error
 
-
+def configure(host, port):
+    network.init(host, port)
