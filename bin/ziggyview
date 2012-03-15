@@ -28,7 +28,7 @@ def decode_stream(stream):
         # the first two bytes.  We're going to peek at that size (using the
         # magic of buffered io), then load them up one structure at a time
         size_data = stream.peek(2)[:2]
-        if not size_data:
+        if len(size_data) < 2:
             break
 
         size = struct.unpack("H", size_data)[0]
