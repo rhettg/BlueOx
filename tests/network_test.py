@@ -24,6 +24,14 @@ class NetworkSendTestCase(TestCase):
         network.init("127.0.0.1", self.port)
 
     @setup
+    def configure_network(self):
+        context._recorder_function = network.send
+
+    @teardown
+    def unconfigure_network(self):
+        context._recorder_function = None
+
+    @setup
     def build_server_socket(self):
         self.server = network._zmq_context.socket(zmq.PULL)
         self.server.bind("tcp://127.0.0.1:%d" % self.port)
