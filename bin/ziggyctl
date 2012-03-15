@@ -1,14 +1,38 @@
 #!/bin/python
+import argparse
 import sys
+import logging
 
 import zmq
 import bson
 
+log = logging.getLogger('ziggyview')
+
+def setup_logging(options):
+    if len(options.verbose) > 1:
+        level = logging.DEBUG
+    elif options.verbose:
+        level = logging.INFO
+    else:
+        level = logging.WARNING
+    
+    log_format = "%(asctime)s %(levelname)s:%(name)s: %(message)s"
+    logging.basicConfig(level=level, format=log_format, stream=sys.stdout)
+
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--verbose', '-v', dest='verbose', action='append_const', const=True, default=list())
+    parser.add_argument('--host', '-H', dest='host', action='store', default="127.0.0.1:3513")
+
+    options = parser.parse_args()
+
+    setup_logging(options)
+
     context = zmq.Context()
     poller = zmq.Poller()
     sock = context.socket(zmq.REQ)
-    sock.connect("tcp://127.0.0.1:3513")
+    sock.connect("tcp://" + options.host)
     poller.register(sock, zmq.POLLIN)
 
     sock.send(bson.dumps({'cmd': 'STATUS'}))
@@ -16,6 +40,7 @@ def main():
     result = dict(poller.poll(5000))
     if sock in result:
         resp = bson.loads(sock.recv())
+        # TODO: Some formatting options
         import pprint; pprint.pprint(resp)
     else:
         print >>sys.stderr, "Error connecting to server"
