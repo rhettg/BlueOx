@@ -43,7 +43,7 @@ class Context(object):
             self.enabled = False
         elif sample:
             sample_name, rate = sample
-            if sample_name == name:
+            if sample_name == type_name:
                 self.enabled = bool(random.random() <= rate)
             else:
                 self.enabled = _get_context(sample_name).sampled_for(type_name, rate)
