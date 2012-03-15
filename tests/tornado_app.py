@@ -31,9 +31,28 @@ class AsyncHandler(ziggy.tornado_utils.SampleRequestHandler):
         self.write("Hello, world")
         self.finish()
 
+class ManualAsyncHandler(ziggy.tornado_utils.SampleRequestHandler):
+    @tornado.web.asynchronous
+    def get(self):
+        pprint.pprint(ziggy.context._contexts)
+        loop = tornado.ioloop.IOLoop.instance()
+
+        loop.add_timeout(time.time() + random.randint(1, 5), self._complete_get)
+        return
+
+    def _complete_get(self):
+        self.ziggy.start()
+
+        with ziggy.Context('request.extra'):
+            ziggy.set('continue_id', self.ziggy.id)
+
+        self.write("Hello, world")
+        self.finish()
+
 application = tornado.web.Application([
     (r"/", MainHandler),
     (r"/async", AsyncHandler),
+    (r"/async2", ManualAsyncHandler),
 ])
 
 def logit(ctx):
