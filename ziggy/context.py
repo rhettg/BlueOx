@@ -115,6 +115,7 @@ class Context(object):
         _remove_context(self)
 
     def done(self):
+        self.stop() # Just be sure
         if self.enabled and _recorder_function:
             _recorder_function(self)
 

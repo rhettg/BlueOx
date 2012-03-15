@@ -75,6 +75,39 @@ For production use, you'll need to set the collection host and port:
 
     ziggy.configure("127.0.0.1", 3514)
 
+### Tornado Hooks
+
+Ziggy comes out of the box with support for Tornado web server. This is
+particularly challenging since one of the goals for ziggy is to, like the
+logging module, have globally accessible contexts so you don't have to pass
+anything around to have access to all the heirarchical goodness.
+
+Since you'll likely want to have a context per web request, it's difficult o
+work around tornado's async machinery to make that work well.
+Fear not, batteries included: `ziggy.tornado_utils`
+
+The most straightfoward way to integrate ziggy into a tornado application requires two things:
+
+  1. Allow ziggy to monkey patch async tooling (tornado.gen primarily)
+  1. Use or re-implement the provided base request handler `ziggy.tornado_utils.SampleRequestHandler`
+
+To install the monkey patching, add the line:
+
+    ziggy.tornado_utils.install()
+
+This must be executed BEFORE any of your RequestHandlers are imported.
+
+This is required if you are using @asynchronous and @gen.engine. If you are
+manually managing callbacks (which you probably shouldn't be), you'll need
+manually recall the ziggy context with `self.ziggy.start()`
+
+See `tests/tornado_app.py` for an example of all this.
+
+If you have your own base request handlers you'll likely want to reimplement
+based on the one provided rather than trying to use inheritance. This will also
+make it really clear what you are including in your top-level event and allow
+you to name it whatever you want.
+
 
 Event Collection
 -----------------

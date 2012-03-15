@@ -108,7 +108,7 @@ class SampleRequestHandler(tornado.web.RequestHandler):
         return res
 
     _execute = wrap_execute('request')(tornado.web.RequestHandler._execute)
-    finish = wrap_finish(tornado.web.RequestHandler.finish)
+    finish = wrap_finish(finish)
 
 
 # We need a custom version of this decorator so that we can pass in our ziggy
