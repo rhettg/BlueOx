@@ -15,7 +15,8 @@ def main():
 
     result = dict(poller.poll(5000))
     if sock in result:
-        print sock.recv()
+        resp = bson.loads(sock.recv())
+        import pprint; pprint.pprint(resp)
     else:
         print >>sys.stderr, "Error connecting to server"
         sys.exit(1)

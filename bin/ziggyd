@@ -102,6 +102,19 @@ class LogFileStream(object):
             self.stream = None
             self.stream_filename = None
 
+def collect_stats(stats, event):
+    type_name = event['type']
+    send_time = event['end_time']
+
+    stats['last'] = time.time()
+    stats['lag'] = time.time() - send_time
+
+    stats.setdefault('events', {})
+    stats['events'].setdefault(type_name, {})
+    stats['events'][type_name]['last'] = send_time
+
+def build_stats(stats):
+    return stats
 
 def main():
     parser = argparse.ArgumentParser()
@@ -154,6 +167,7 @@ def main():
         forward_sock.connect("tcp://%s" % options.forward)
         forward_sock.hwm = 1000
 
+    stats = {}
     log_files = {}
     continue_running = True
     log.info("Starting IO Loop")
@@ -172,6 +186,8 @@ def main():
         if collector_sock in ready:
             event_data = collector_sock.recv()
             event = bson.loads(event_data)
+
+            collect_stats(stats, event)
 
             # We may have subscribers to our streaming feed
             # Clients should expect two messages, the name of the channel and the actual channel data
@@ -206,7 +222,7 @@ def main():
                 _, port = options.collect.split(':')
                 control_sock.send(bson.dumps({'port': int(port)}))
             elif request['cmd'] == 'STATUS':
-                control_sock.send(bson.dumps({'ok': True}))
+                control_sock.send(bson.dumps(build_stats(stats)))
             elif request['cmd'] == 'SHUTDOWN':
                 control_sock.send(bson.dumps({'ok': True}))
                 continue_running = False
