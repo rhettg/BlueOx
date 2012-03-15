@@ -18,10 +18,20 @@ import sys
 import io
 import logging
 import signal
+import time
 
 import json
 import zmq
 import bson
+
+# How long do we wait for network traffic before running our poll loop anyway.
+POLL_LOOP_TIMEOUT_MS = 1000
+
+# How often should we poll our file streams. This is also the flush interval.
+FILE_POLL_INTERVAL = 1.0
+
+# How long before we close an open idle file
+FILE_IDLE_TIMEOUT = 60.0
 
 log = logging.getLogger("ziggy.d")
 
@@ -35,6 +45,63 @@ def setup_logging(options):
     
     log_format = "%(asctime)s %(levelname)s:%(name)s: %(message)s"
     logging.basicConfig(level=level, format=log_format, stream=sys.stdout)
+
+class LogFileStream(object):
+    def __init__(self, log_path, name):
+        self.name = name
+        self.log_path = log_path
+
+        self.last_write = None
+        self.last_flush = None
+        self.last_poll = None
+        self.stream = None
+        self.stream_filename = None
+
+    def poll(self):
+        if self.last_poll and time.time() - self.last_poll < FILE_POLL_INTERVAL:
+            return True
+
+        log.debug("Doing poll for file %s", self.name)
+
+        self.last_poll = time.time()
+
+        if self.stream:
+            if time.time() - self.last_write > FILE_IDLE_TIMEOUT:
+                self.close()
+                return False
+            elif time.time() - self.last_write > FILE_POLL_INTERVAL:
+                self.stream.flush()
+
+        if self.stream and not os.path.exists(self.stream_filename):
+            self.close()
+            return False
+
+        return True
+
+    def log_file_path(self):
+        # TODO: Time
+        return os.path.join(self.log_path, "%s.log" % self.name)
+
+    def open(self):
+        self.stream_filename = self.log_file_path()
+
+        log.info("Opening file stream for %s: %s", self.name, self.stream_filename)
+        self.stream = io.open(self.stream_filename, "ab")
+
+    def write(self, write_time, data):
+        self.last_write = time.time()
+        if not self.stream:
+            self.open()
+
+        self.stream.write(data)
+
+    def close(self):
+        if self.stream:
+            log.info("Closing stream for file %s", self.name)
+            self.stream.close()
+            self.stream = None
+            self.stream_filename = None
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -93,12 +160,14 @@ def main():
     while continue_running:
         log.debug("Poll")
         try:
-            ready = dict(poller.poll())
+            ready = dict(poller.poll(POLL_LOOP_TIMEOUT_MS))
         except KeyboardInterrupt, SystemExit:
             continue_running = False
             break
 
         log.debug("Poller returned: %r", ready)
+
+        log_files = dict((name, stream) for name, stream in log_files.iteritems() if stream.poll())
 
         if collector_sock in ready:
             event_data = collector_sock.recv()
@@ -113,19 +182,19 @@ def main():
             # If we are forwarding our data to another host, do so
             if forward_sock:
                 try:
-                    forard_sock.send(event_data, zmq.NOBLOCK)
+                    forward_sock.send(event_data, zmq.NOBLOCK)
                 except zmq.ZMQError, e:
                     log.error("Error forwarding event data, buffer possibly overflowed: %r", e)
 
             # We have been configured to log data to log files.
             if options.log_path:
 
-                channel = event['type']
-                if channel not in log_files:
-                    log.info("opening log file for %s", channel)
-                    log_files[channel] = io.open(os.path.join(options.log_path, "%s.log" % channel), "ab")
+                type_name = event['type']
+                if type_name not in log_files:
+                    log_files[type_name] = LogFileStream(options.log_path, type_name)
 
-                log_files[channel].write(event_data)
+                log.debug("writing to %s", type_name)
+                log_files[type_name].write(event['start_time'], event_data)
         elif control_sock in ready:
             control_data = control_sock.recv()
             request = bson.loads(control_data)
@@ -143,7 +212,7 @@ def main():
                 continue_running = False
             else:
                 control_sock.send(bson.dumps({'error': "Unknown Command"}))
-            
+
     collector_sock.close(0)
     control_sock.close(0)
     streamer_sock.close(0)
