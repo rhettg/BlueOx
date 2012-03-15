@@ -118,9 +118,10 @@ class Context(object):
         if self.enabled and _recorder_function:
             _recorder_function(self)
 
-        # Make sure we can't 'done' this again
-        self.data = None
-        self.id = None
+        # Make sure we don't get any duplicate data
+        # I would clear out all the data here, but that makes testing a little
+        # more challenging.
+        self.enabled = False
 
     def __enter__(self):
         self.start()
@@ -134,7 +135,8 @@ _contexts = []
 _contexts_by_name = {}
 
 def _add_context(context):
-    assert context.name not in _contexts_by_name
+    if context.name in _contexts_by_name:
+        return
     _contexts_by_name[context.name] = context
     _contexts.append(context)
 
@@ -144,7 +146,7 @@ def _get_context(name):
 def _remove_context(context):
     try:
         del _contexts_by_name[context.name]
-    except IndexError:
+    except KeyError:
         pass
 
     try:

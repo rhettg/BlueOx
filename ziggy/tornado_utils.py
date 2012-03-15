@@ -15,6 +15,7 @@ tornado.
 """
 import functools
 import traceback
+import types
 
 import tornado.web
 import tornado.gen
@@ -119,7 +120,7 @@ def gen_engine(func):
     def wrapper(*args, **kwargs):
         gen = func(*args, **kwargs)
         if isinstance(gen, types.GeneratorType):
-            ziggy_ctx = getattr(self, 'ziggy', None)
+            ziggy_ctx = getattr(args[0], 'ziggy', None)
             ZiggyRunner(gen, ziggy_ctx).run()
             return
         assert gen is None, gen
