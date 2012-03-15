@@ -3,6 +3,7 @@
 
 import os
 import sys
+import glob
 import ziggy
 from distutils.core import setup
 
@@ -20,11 +21,12 @@ from distutils.core import setup
 setup(
     name='ziggy',
     version=ziggy.__version__,
-    description='Ziggy Application Logging',
-    long_description=open('README.rst').read(),
+    description='Ziggy Python Application Logging',
+    long_description=open('README.md').read(),
     author='Rhett Garber',
     url='http://github.com/rhettg/Ziggy',
     package_data={'': ['LICENSE', 'NOTICE']},
+    scripts=glob.glob("bin/*"),
     license=ziggy.__license__,
     #packages=find_packages()
     packages=['ziggy']
