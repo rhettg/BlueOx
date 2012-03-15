@@ -19,6 +19,10 @@ import struct
 from . import utils
 from . import network
 
+# This will be redefined by our configuration to tell us where to record stuff
+# to.
+_recorder_function = None
+
 class Context(object):
     __slots__ = ["name", "data", "id", "_writable", "start_time", "_sample_checks", "enabled"]
     def __init__(self, type_name, id=None, sample=None):
@@ -87,6 +91,13 @@ class Context(object):
         if len(existing_value) == 1:
             utils.set_deep(self.data, key, existing_value)
 
+    def add(self, key, value):
+        if not self.writable:
+            raise ValueError()
+
+        existing_value = utils.get_deep(self.data, key, 0)
+        utils.set_deep(self.data, key, existing_value + value)
+
     def to_dict(self):
         return {'id': self.id,
                 'type': self.name,
@@ -95,17 +106,29 @@ class Context(object):
                 'body': self.data
                }
 
-    def __enter__(self):
+    def start(self):
         _add_context(self)
         self._writable = True
+
+    def stop(self):
+        self._writable = False
+        _remove_context(self)
+
+    def done(self):
+        if self.enabled and _recorder_function:
+            _recorder_function(self)
+
+        # Make sure we can't 'done' this again
+        self.data = None
+        self.id = None
+
+    def __enter__(self):
+        self.start()
         return self
 
     def __exit__(self, type, value, traceback):
-        self._writable = False
-        _remove_context(self)
-        if self.enabled:
-            network.send(self)
-
+        self.stop()
+        self.done()
 
 _contexts = []
 _contexts_by_name = {}
@@ -119,8 +142,15 @@ def _get_context(name):
     return _contexts_by_name.get(str(name))
 
 def _remove_context(context):
-    del _contexts_by_name[context.name]
-    _contexts.remove(context)
+    try:
+        del _contexts_by_name[context.name]
+    except IndexError:
+        pass
+
+    try:
+        _contexts.remove(context)
+    except ValueError:
+        pass
 
 def current_context():
     try:
@@ -137,3 +167,8 @@ def append(*args, **kwargs):
     context = current_context()
     if context:
         context.append(*args, **kwargs)
+
+def add(*args, **kwargs):
+    context = current_context()
+    if context:
+        context.add(*args, **kwargs)
