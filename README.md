@@ -97,7 +97,7 @@ To install the monkey patching, add the line:
 
 This must be executed BEFORE any of your RequestHandlers are imported.
 
-This is required if you are using @asynchronous and @gen.engine. If you are
+This is required if you are using `@web.asynchronous` and `@gen.engine`. If you are
 manually managing callbacks (which you probably shouldn't be), you'll need
 manually recall the ziggy context with `self.ziggy.start()`
 
