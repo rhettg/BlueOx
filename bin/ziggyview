@@ -108,6 +108,7 @@ def main():
 
     for line in out_stream:
         if options.pretty:
+            print
             pprint.pprint(line)
         else:
             print line
