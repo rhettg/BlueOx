@@ -26,12 +26,16 @@ _recorder_function = None
 class Context(object):
     __slots__ = ["name", "data", "id", "_writable", "start_time", "_sample_checks", "enabled"]
     def __init__(self, type_name, id=None, sample=None):
-        self.name = type_name
+        parent_ctx = current_context()
+
+        if parent_ctx:
+            self.name = ".".join((parent_ctx.name, type_name))
+        else:
+            self.name = type_name
+
         self.data = {}
         self.start_time = time.time()
         self._sample_checks = {}
-
-        parent_ctx = _get_context(utils.parse_key(type_name)[:-1])
 
         if id is not None:
             self.id = id
@@ -47,8 +51,10 @@ class Context(object):
             self.enabled = False
         elif sample:
             sample_name, rate = sample
-            if sample_name == type_name:
+            if sample_name == type_name or sample_name == '.':
                 self.enabled = bool(random.random() <= rate)
+            elif parent_ctx and sample_name == '..':
+                self.enabled = parent_ctx.sampled_for(type_name, rate)
             else:
                 self.enabled = _get_context(sample_name).sampled_for(type_name, rate)
         else:

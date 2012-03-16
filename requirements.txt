@@ -3,3 +3,4 @@ pep8
 pyflakes
 pyzmq
 bson
+tornado

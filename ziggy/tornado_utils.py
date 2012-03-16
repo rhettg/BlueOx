@@ -14,8 +14,11 @@ tornado.
 
 """
 import functools
+import logging
 import traceback
 import types
+
+log = logging.getLogger(__name__)
 
 import tornado.web
 import tornado.gen
@@ -147,7 +150,7 @@ class ZiggyRunner(tornado.gen.Runner):
 
 class AsyncHTTPClient(tornado.simple_httpclient.SimpleAsyncHTTPClient):
     def __init__(self, *args, **kwargs):
-        self.ziggy_name = 'tornado.httpclient'
+        self.ziggy_name = 'httpclient'
         return super(AsyncHTTPClient, self).__init__(*args, **kwargs)
 
     def fetch(self, request, callback, **kwargs):

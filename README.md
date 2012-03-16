@@ -42,7 +42,7 @@ are related to the parent event and can be joined together in post-processing by
 For example, inside some application code (in `do_stuff()` above), you might execute some sql queries.
 
     def execute(cursor, query, args):
-        with ziggy.Context('request.sql'):
+        with ziggy.Context('sql'):
             ziggy.set('query', query)
             with ziggy.timeit('query_time'):
                 res = cursor.execute(query, args)
@@ -50,7 +50,7 @@ For example, inside some application code (in `do_stuff()` above), you might exe
         return res
 
 Each SQL query would then be logged as a seperate event. However, each event
-will have the unique id provided by the parent `request` context.
+will have the unique id provided by the parent `request` context. The name of the context will become `request.sql`.
 
 You can provide you're own id or allow ziggy to autogenerate one for the top-level context.
 
@@ -58,12 +58,12 @@ Ziggy also provides the ability to do sampling. This means only a set
 percentage of generate events will actually be logged. You can choose sampling
 based on any level of the context:
 
-    with ziggy.Context('request.memcache', sample=('request', 0.25)):
+    with ziggy.Context('memcache', sample=('..', 0.25)):
         ziggy.set('key', key)
         client.set(key, value)
 
 In the above example, only 25% of requests will include the memcache data. If
-the sample argument where `('request.memcache', 0.25)` then 25% of all memcache
+the sample argument where `('memcache', 0.25)` then 25% of all memcache
 events would be logged.
 
 ### Configuration
