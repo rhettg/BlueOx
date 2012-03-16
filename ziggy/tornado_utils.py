@@ -19,6 +19,7 @@ import types
 
 import tornado.web
 import tornado.gen
+import tornado.simple_httpclient
 
 import ziggy
 
@@ -143,3 +144,29 @@ class ZiggyRunner(tornado.gen.Runner):
         finally:
             if self.ziggy_ctx:
                 self.ziggy_ctx.stop()
+
+class AsyncHTTPClient(tornado.simple_httpclient.SimpleAsyncHTTPClient):
+    def __init__(self, *args, **kwargs):
+        self.ziggy_name = 'tornado.httpclient'
+        return super(AsyncHTTPClient, self).__init__(*args, **kwargs)
+
+    def fetch(self, request, callback, **kwargs):
+        ctx = ziggy.Context(self.ziggy_name)
+        ctx.start()
+        if isinstance(request, basestring):
+            ctx.set('request.uri', request)
+        else:
+            ctx.set('request.uri', request.url)
+            ctx.set('request.size', len(request.body) if request.body else 0)
+
+        ctx.stop()
+
+        def wrap_callback(response):
+            ctx.start()
+            ctx.set('response.code', response.code)
+            ctx.set('response.size', len(response.body))
+            ctx.done()
+            callback(response)
+
+        return super(AsyncHTTPClient, self).fetch(request, wrap_callback, **kwargs)
+
