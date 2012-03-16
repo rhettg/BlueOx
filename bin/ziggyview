@@ -4,6 +4,7 @@ import sys
 import io
 import struct
 import logging
+import pprint
 
 import bson
 import zmq
@@ -57,7 +58,7 @@ def subscribe_stream(context, host, port, type_name):
         if len(parts) == 2:
             channel, data = parts
             # If the client only want exact matches, we'll skip this guy.
-            if not prefix and channel != subscription:
+            if not prefix and subscription and channel != subscription:
                 continue
 
             yield bson.loads(data)
@@ -72,6 +73,7 @@ def main():
     parser.add_argument('--type-name', '-n', dest='type_name', action='store', default=None, help="What event types to display. Can end with '*' for prefix matches.")
     parser.add_argument('--host', '-H', dest='host', action='store', default="127.0.0.1:3513")
     parser.add_argument('--log-path', '-l', dest='log_path', action='store', default=None)
+    parser.add_argument('--pretty', '-p', dest='pretty', action='store_true', default=False)
 
     options = parser.parse_args()
 
@@ -105,7 +107,10 @@ def main():
         out_stream = decode_stream(stdin)
 
     for line in out_stream:
-        print line
+        if options.pretty:
+            pprint.pprint(line)
+        else:
+            print line
 
 
 if __name__ == '__main__':
