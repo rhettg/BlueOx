@@ -22,7 +22,7 @@ class SimpleSetTestCase(TestCase):
 class NestedIDTestCase(TestCase):
     def test(self):
         with context.Context('test', 5):
-            with context.Context('foo') as c:
+            with context.Context('.foo') as c:
                 assert_equal(c.name, 'test.foo')
                 assert_equal(c.id, 5)
 
@@ -54,7 +54,7 @@ class ParentSampleTestCase(TestCase):
             with parent_context:
                 sub_enabled = []
                 for _ in range(10):
-                    context = ziggy.Context('sub', sample=('..', 0.25))
+                    context = ziggy.Context('.sub', sample=('..', 0.25))
                     sub_enabled.append(1 if context.enabled else 0)
                     enabled.append(1 if context.enabled else 0)
                 assert all(sub_enabled) or not any(sub_enabled)

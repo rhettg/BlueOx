@@ -26,11 +26,15 @@ _recorder_function = None
 class Context(object):
     __slots__ = ["name", "data", "id", "_writable", "start_time", "_sample_checks", "enabled"]
     def __init__(self, type_name, id=None, sample=None):
-        parent_ctx = current_context()
 
-        if parent_ctx:
-            self.name = ".".join((parent_ctx.name, type_name))
+        if type_name.startswith('.'):
+            parent_ctx = current_context()
+            if parent_ctx is None:
+                self.name = type_name[1:]
+            else:
+                self.name = parent_ctx.name + type_name
         else:
+            parent_ctx = None
             self.name = type_name
 
         self.data = {}

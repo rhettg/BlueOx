@@ -150,7 +150,7 @@ class ZiggyRunner(tornado.gen.Runner):
 
 class AsyncHTTPClient(tornado.simple_httpclient.SimpleAsyncHTTPClient):
     def __init__(self, *args, **kwargs):
-        self.ziggy_name = 'httpclient'
+        self.ziggy_name = '.httpclient'
         return super(AsyncHTTPClient, self).__init__(*args, **kwargs)
 
     def fetch(self, request, callback, **kwargs):
@@ -167,7 +167,7 @@ class AsyncHTTPClient(tornado.simple_httpclient.SimpleAsyncHTTPClient):
         def wrap_callback(response):
             ctx.start()
             ctx.set('response.code', response.code)
-            ctx.set('response.size', len(response.body))
+            ctx.set('response.size', len(response.body) if response.body else 0)
             ctx.done()
             callback(response)
 

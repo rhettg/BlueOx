@@ -38,11 +38,12 @@ specific request.
 
 Contexts can be heirarchical. This means you can generate sub-events that
 are related to the parent event and can be joined together in post-processing by the common id they share.
+Indicate you want this behavior for your context by naming with a prefixing '.'.
 
 For example, inside some application code (in `do_stuff()` above), you might execute some sql queries.
 
     def execute(cursor, query, args):
-        with ziggy.Context('sql'):
+        with ziggy.Context('.sql'):
             ziggy.set('query', query)
             with ziggy.timeit('query_time'):
                 res = cursor.execute(query, args)
@@ -58,7 +59,7 @@ Ziggy also provides the ability to do sampling. This means only a set
 percentage of generate events will actually be logged. You can choose sampling
 based on any level of the context:
 
-    with ziggy.Context('memcache', sample=('..', 0.25)):
+    with ziggy.Context('.memcache', sample=('..', 0.25)):
         ziggy.set('key', key)
         client.set(key, value)
 
