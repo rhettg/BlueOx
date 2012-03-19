@@ -158,8 +158,10 @@ class AsyncHTTPClient(tornado.simple_httpclient.SimpleAsyncHTTPClient):
         ctx.start()
         if isinstance(request, basestring):
             ctx.set('request.uri', request)
+            ctx.set('request.method', kwargs.get('method', 'GET'))
         else:
             ctx.set('request.uri', request.url)
+            ctx.set('request.method', request.method)
             ctx.set('request.size', len(request.body) if request.body else 0)
 
         ctx.stop()
