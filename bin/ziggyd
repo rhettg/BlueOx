@@ -13,6 +13,7 @@ Main logging daemon for ziggy events.
 
 """
 import argparse
+import datetime
 import os
 import sys
 import io
@@ -76,11 +77,15 @@ class LogFileStream(object):
             self.close()
             return False
 
+        if self.stream and self.log_file_path() != self.stream_filename:
+            self.close()
+            return False
+
         return True
 
     def log_file_path(self):
-        # TODO: Time
-        return os.path.join(self.log_path, "%s.log" % self.name)
+        day_str = datetime.datetime.now().strftime('%Y%m%d')
+        return os.path.join(self.log_path + '/', "%s-%s.log" % (self.name, day_str))
 
     def open(self):
         self.stream_filename = self.log_file_path()
