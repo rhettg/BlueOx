@@ -16,6 +16,7 @@ __author__ = 'Rhett Garber'
 __license__ = 'ISC'
 __copyright__ = 'Copyright 2012 Rhett Garber'
 
+import logging
 
 from . import utils
 from . import network
@@ -24,12 +25,24 @@ from . import context as _context_mod
 from .errors import Error
 from .timer import timeit
 
+log = logging.getLogger(__name__)
+
 
 def configure(host, port, recorder=None):
+    """Initialize ziggy
+
+    This instructs the ziggy system where to send it's logging data. If ziggy is not configured, log data will
+    be silently dropped.
+
+    Currently we support logging through the network (and the configured host and port) to a ziggyd instances, or
+    to the specified recorder function
+    """
     global _record_function
-    if recorder is None:
+    if recorder:
+        context._recorder_function = recorder
+    elif host and port:
         network.init(host, port)
         context._recorder_function = network.send
     else:
-        context._recorder_function = recorder
+        log.warning("Empty ziggy configuration")
 
