@@ -4,7 +4,7 @@
 import os
 import sys
 import glob
-import ziggy
+#import ziggy
 from distutils.core import setup
 
 # publish package
@@ -20,14 +20,16 @@ from distutils.core import setup
 
 setup(
     name='ziggy',
-    version=ziggy.__version__,
+    #version=ziggy.__version__,
+    version='0.0.1',
     description='Ziggy Python Application Logging',
     long_description=open('README.md').read(),
     author='Rhett Garber',
     url='http://github.com/rhettg/Ziggy',
     package_data={'': ['LICENSE', 'NOTICE']},
     scripts=glob.glob("bin/*"),
-    license=ziggy.__license__,
+    #license=ziggy.__license__,
+    license="ISC",
     #packages=find_packages()
     packages=['ziggy']
 )
