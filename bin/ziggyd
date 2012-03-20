@@ -109,7 +109,8 @@ class LogFileStream(object):
 
 def collect_stats(stats, event):
     type_name = event['type']
-    send_time = event['end_time']
+    send_time = event['end']
+    host = event['host']
 
     stats['last'] = time.time()
     stats['lag'] = time.time() - send_time
@@ -117,6 +118,10 @@ def collect_stats(stats, event):
     stats.setdefault('events', {})
     stats['events'].setdefault(type_name, {})
     stats['events'][type_name]['last'] = send_time
+
+    stats.setdefault('hosts', {})
+    stats['hosts'].setdefault(host, {})
+    stats['hosts'][host]['last'] = send_time
 
 def build_stats(stats):
     return stats
@@ -172,7 +177,7 @@ def main():
         forward_sock.connect("tcp://%s" % options.forward)
         forward_sock.hwm = 1000
 
-    stats = {}
+    stats = {'last': None, 'lag': None, 'events': {}, 'hosts': {}}
     log_files = {}
     continue_running = True
     log.info("Starting IO Loop")
@@ -215,7 +220,7 @@ def main():
                     log_files[type_name] = LogFileStream(options.log_path, type_name)
 
                 log.debug("writing to %s", type_name)
-                log_files[type_name].write(event['start_time'], event_data)
+                log_files[type_name].write(event['start'], event_data)
         elif control_sock in ready:
             control_data = control_sock.recv()
             request = bson.loads(control_data)
