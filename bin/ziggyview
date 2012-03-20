@@ -9,6 +9,8 @@ import pprint
 import bson
 import zmq
 
+import ziggy.client
+
 log = logging.getLogger('ziggyview')
 
 def setup_logging(options):
@@ -21,50 +23,6 @@ def setup_logging(options):
     
     log_format = "%(asctime)s %(levelname)s:%(name)s: %(message)s"
     logging.basicConfig(level=level, format=log_format, stream=sys.stdout)
-
-
-def decode_stream(stream):
-    while True:
-        # BSON is encoded with a 32-bit int size in bytes of the structure as
-        # the first two bytes.  We're going to peek at that size (using the
-        # magic of buffered io), then load them up one structure at a time
-        size_data = stream.peek(2)[:2]
-        if len(size_data) < 2:
-            break
-
-        size = struct.unpack("H", size_data)[0]
-        data = stream.read(size)
-        yield bson.loads(data)
-
-def subscribe_stream(context, host, port, type_name):
-    sock = context.socket(zmq.SUB)
-
-    prefix = False
-    if type_name:
-        if type_name.endswith('*'):
-            prefix = True
-            subscription = type_name[:-1]
-        else:
-            subscription = type_name
-    else:
-        subscription = ""
-
-    sock.setsockopt(zmq.SUBSCRIBE, subscription)
-    log.info("Connecting to %s:%d" % (host, port))
-    sock.connect("tcp://%s:%d" % (host, port))
-
-    while True:
-        parts = sock.recv_multipart()
-        if len(parts) == 2:
-            channel, data = parts
-            # If the client only want exact matches, we'll skip this guy.
-            if not prefix and subscription and channel != subscription:
-                continue
-
-            yield bson.loads(data)
-        else:
-            log.info("Done receiving")
-            break
 
 def main():
     parser = argparse.ArgumentParser()
@@ -81,22 +39,7 @@ def main():
     if sys.stdin.isatty():
         log.info("Loading stream from ziggyd")
 
-        context = zmq.Context()
-        poller = zmq.Poller()
-        sock = context.socket(zmq.REQ)
-        sock.connect("tcp://%s" % options.host)
-        poller.register(sock, zmq.POLLIN)
-
-        sock.send(bson.dumps({'cmd': 'SOCK_STREAM'}))
-
-        result = dict(poller.poll(5000))
-        if sock in result:
-            result = bson.loads(sock.recv())
-            host, _ = options.host.split(':')
-            out_stream = subscribe_stream(context, host, result['port'], options.type_name)
-        else:
-            print >>sys.stderr, "Error connecting to server"
-            sys.exit(1)
+        out_stream = ziggy.client.subscribe_stream(options.host, options.type_name)
     else:
         if options.type_name is not None:
             parser.error("Can't specify a name from stdin")
@@ -104,7 +47,7 @@ def main():
 
         log.info("Loading stream from stdin")
         stdin = io.open(sys.stdin.fileno(), mode='rb', closefd=False)
-        out_stream = decode_stream(stdin)
+        out_stream = ziggy.client.decode_stream(stdin)
 
     for line in out_stream:
         if options.pretty:
