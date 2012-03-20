@@ -111,8 +111,10 @@ class Context(object):
     def to_dict(self):
         return {'id': self.id,
                 'type': self.name,
-                'start_time': self.start_time,
-                'end_time': time.time(),
+                'host': os.uname()[1],
+                'pid': os.getpid(),
+                'start': self.start_time,
+                'end': time.time(),
                 'body': self.data
                }
 
