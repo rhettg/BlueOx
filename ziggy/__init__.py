@@ -45,4 +45,5 @@ def configure(host, port, recorder=None):
         context._recorder_function = network.send
     else:
         log.warning("Empty ziggy configuration")
+        context._recorder_function = None
 
