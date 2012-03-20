@@ -23,6 +23,7 @@ from . import network
 from .context import Context, set, append, add
 from . import context as _context_mod
 from .errors import Error
+from .logger import LogHandler
 from .timer import timeit
 
 log = logging.getLogger(__name__)
