@@ -32,7 +32,7 @@ def main():
     parser.add_argument('--host', '-H', dest='host', action='store', default="127.0.0.1:3513")
     parser.add_argument('--log-path', '-l', dest='log_path', action='store', default=None)
     parser.add_argument('--pretty', '-p', dest='pretty', action='store_true', default=False)
-    parser.add_argument('--group-parent', dest='group_parent', action='store', default=False)
+    parser.add_argument('--group', dest='group', action='store_true', default=False)
 
     options = parser.parse_args()
 
@@ -50,8 +50,8 @@ def main():
         stdin = io.open(sys.stdin.fileno(), mode='rb', closefd=False)
         out_stream = ziggy.client.decode_stream(stdin)
 
-    if options.group_parent:
-        out_stream = ziggy.client.Grouper(out_stream, options.group_parent)
+    if options.group:
+        out_stream = ziggy.client.Grouper(out_stream)
 
     for line in out_stream:
         if options.pretty:

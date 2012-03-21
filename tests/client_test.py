@@ -14,7 +14,7 @@ class SimpleGrouperTest(TestCase):
 
     @setup
     def build_grouper(self):
-        self.grouper = client.Grouper(self.stream, 'foo')
+        self.grouper = client.Grouper(self.stream)
 
     def test(self):
         output = list(self.grouper)
@@ -35,7 +35,7 @@ class MaxGrouperTest(TestCase):
 
     @setup
     def build_grouper(self):
-        self.grouper = client.Grouper(self.stream, 'foo', max_size=1)
+        self.grouper = client.Grouper(self.stream, max_size=1)
 
     def test(self):
         output = list(self.grouper)

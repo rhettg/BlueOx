@@ -102,21 +102,21 @@ def subscribe_stream(control_host, subscribe):
 class Grouper(object):
     """Utility for grouping events and sub-events together.
     
-    Events fed into a Grouper are joined by their common 'id'. Encountering the parent event type will trigger emitting
-    a list of all events and sub events for that single id. 
+    Events fed into a Grouper are joined by their common 'id'. Encountering the
+    parent event type will trigger emitting a list of all events and sub events
+    for that single id. 
 
     This assumes that the parent event will be the last encountered.
 
     So for example, you might do something like:
 
         stream = ziggy.client.decode_stream(stdin)
-        for event_group in client.Grouper(stream, 'request'):
+        for event_group in client.Grouper(stream):
             ... do some processing of the event group ...
 
     """
-    def __init__(self, stream, parent, max_size=1000):
+    def __init__(self, stream, max_size=1000):
         self.max_size = max_size
-        self.parent = parent
         self.stream = stream
         self.dict = collections.OrderedDict()
 
@@ -135,7 +135,7 @@ class Grouper(object):
             except KeyError:
                 self.dict[event['id']] = [event]
 
-            if event['type'] == self.parent:
+            if '.' not in event['type']:
                 yield self.dict.pop(event['id'])
 
         raise StopIteration
