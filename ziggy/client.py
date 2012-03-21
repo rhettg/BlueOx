@@ -10,6 +10,7 @@ This module provides utilities for writing client applications which connect or 
 :license: ISC, see LICENSE for more details.
 
 """
+import collections
 import logging
 import struct
 
@@ -96,3 +97,51 @@ def subscribe_stream(control_host, subscribe):
                 yield bson.loads(data)
             else:
                 break
+
+
+class Grouper(object):
+    """Utility for grouping events and sub-events together.
+    
+    Events fed into a Grouper are joined by their common 'id'. Encountering the parent event type will trigger emitting
+    a list of all events and sub events for that single id. 
+
+    This assumes that the parent event will be the last encountered.
+
+    So for example, you might do something like:
+
+        stream = ziggy.client.decode_stream(stdin)
+        for event_group in client.Grouper(stream, 'request'):
+            ... do some processing of the event group ...
+
+    """
+    def __init__(self, stream, parent, max_size=1000):
+        self.max_size = max_size
+        self.parent = parent
+        self.stream = stream
+        self.dict = collections.OrderedDict()
+
+    @property
+    def size(self):
+        return len(self.dict)
+
+    def __iter__(self):
+        for event in self.stream:
+
+            while self.size > self.max_size:
+                self.dict.popitem(last=False)
+
+            try:
+                self.dict[event['id']].append(event)
+            except KeyError:
+                self.dict[event['id']] = [event]
+
+            if event['type'] == self.parent:
+                yield self.dict.pop(event['id'])
+
+        raise StopIteration
+
+
+
+
+
+
