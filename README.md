@@ -1,12 +1,34 @@
 Ziggy - A python application logging framework
 =========================
 
+Ziggy is a python based logging and data collection framework. The problem it
+attempts to solve is one where you have multiple python processes across
+multiple hosts processing some sort of requests. You generally want to collect:
+
+  * Performance data (counters, timers, etc)
+  * User activity
+  * Errors (and debugging data)
+
+Use ziggy to record that data, aggregate it to a central logging server where
+it can be written to disk.
+
+In addition, it's often useful to be able to plug reporting scripts into the
+logging server so as to generate live stats and reports or do ad hoc analysis.
+
+Ziggy's collection functionality is fairly advanced allowing heirarchies of
+collectors and queuing in the event of failure. For example, it's recommend to
+run an instance of `ziggyd` on each host, and then configure each of those
+collectors to forward log events to a central collector on a dedicated log
+machine.
+
 Installation
 ----------------
 
-Ziggy requires ZeroMQ and Python 2.7
+Ziggy requires Python 2.7, ZeroMQ and BSON.
 
-The python library requirements are given `requirements.txt` and is designed to be used with virtualenv.
+The full python library requirements are given `requirements.txt` and is designed to be used with virtualenv.
+
+Tornado is not required for operation of ziggy, but development and running tests will likely require it.
 
 I expect debian packaging will be developed soon.
 
@@ -76,7 +98,20 @@ For production use, you'll need to set the collection host and port:
 
     ziggy.configure("127.0.0.1", 3514)
 
-### Tornado Hooks
+### Logging module integration
+
+Ziggy comes with a log handler that can be added to your `logging` module setup for easy integration into existing logging setups.
+
+For example:
+
+    handler = ziggy.LogHandler()
+    handler.setLevel(logging.INFO)
+    logging.getLogger('').addHandler(handler)
+
+By default, all log event will show up as a sub-event `.log` but this can be
+configured by passing a type_name to the `LogHandler`
+
+### Tornado Integration
 
 Ziggy comes out of the box with support for Tornado web server. This is
 particularly challenging since one of the goals for ziggy is to, like the
@@ -194,4 +229,15 @@ This will create a virtualenv in `env` directory. Running the tests is just a si
 Or if you are running individual tests, use `testify` directly:
 
     testify -v tests
+
+
+TODO List
+----------------
+  * Failure of the central collector is only recoverable if the `ziggyd`
+    instance comes back on the same ip address. It would be nice
+    to be able to live reconfigure through `ziggyctl` to point to a backup collector.
+  * Debian packaging would probably be convinient.
+  * Need more Real World data on what becomes a bottleneck first: CPU or
+    Network. Adding options for compression would be pretty easy.
+  * More examples of what to do with the data would make this project more compelling visually.
 

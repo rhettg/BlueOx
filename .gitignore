@@ -6,3 +6,4 @@ env
 *.swp
 *.egg-info
 .DS_Store
+MANIFEST

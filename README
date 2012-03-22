@@ -1,0 +1,23 @@
+Ziggy - A python application logging framework
+
+Ziggy is a python based logging and data collection framework. The problem it
+attempts to solve is one where you have multiple python processes across
+multiple hosts processing some sort of requests. You generally want to collect:
+
+  * Performance data (counters, timers, etc)
+  * User activity
+  * Errors (and debugging data)
+
+Use ziggy to record that data, aggregate it to a central logging server where
+it can be written to disk.
+
+In addition, it's often useful to be able to plug reporting scripts into the
+logging server so as to generate live stats and reports or do ad hoc analysis.
+
+Ziggy's collection functionality is fairly advanced allowing heirarchies of
+collectors and queuing in the event of failure. For example, it's recommend to
+run an instance of `ziggyd` on each host, and then configure each of those
+collectors to forward log events to a central collector on a dedicated log
+machine.
+
+See README.md for full details
