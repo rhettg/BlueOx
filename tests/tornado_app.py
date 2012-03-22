@@ -31,6 +31,20 @@ class AsyncHandler(ziggy.tornado_utils.SampleRequestHandler):
         self.write("Hello, world")
         self.finish()
 
+
+class AsyncCrashHandler(ziggy.tornado_utils.SampleRequestHandler):
+    @tornado.web.asynchronous
+    @tornado.gen.engine
+    def get(self):
+        loop = tornado.ioloop.IOLoop.instance()
+
+        req_id = self.ziggy.id
+
+        called = yield tornado.gen.Task(loop.add_timeout, time.time() + random.randint(1, 5))
+
+        raise Exception("This Handler is Broken!")
+
+
 class ManualAsyncHandler(ziggy.tornado_utils.SampleRequestHandler):
     @tornado.web.asynchronous
     def get(self):
@@ -52,6 +66,7 @@ class ManualAsyncHandler(ziggy.tornado_utils.SampleRequestHandler):
 application = tornado.web.Application([
     (r"/", MainHandler),
     (r"/async", AsyncHandler),
+    (r"/async_crash", AsyncCrashHandler),
     (r"/async2", ManualAsyncHandler),
 ])
 

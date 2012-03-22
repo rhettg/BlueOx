@@ -52,8 +52,8 @@ def wrap_execute(type_name):
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
             self.ziggy = ziggy.Context(type_name)
+            self.ziggy.start()
             try:
-                self.ziggy.start()
                 return func(self, *args, **kwargs)
             finally:
                 # We're done executing in this context for the time being. Either we've already
@@ -64,6 +64,17 @@ def wrap_execute(type_name):
         return wrapper
 
     return decorate
+
+def wrap_exception(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        self.ziggy.start()
+        try:
+            return func(self, *args, **kwargs)
+        finally:
+            self.ziggy.stop()
+
+    return wrapper
 
 def wrap_finish(func):
     @functools.wraps(func)
@@ -106,13 +117,14 @@ class SampleRequestHandler(tornado.web.RequestHandler):
         ziggy.add('response_size', len(chunk))
         return super(SampleRequestHandler, self).write(chunk)
 
-    def finish(self):
-        res = super(SampleRequestHandler, self).finish()
+    def finish(self, *args, **kwargs):
+        res = super(SampleRequestHandler, self).finish(*args, **kwargs)
         ziggy.set('response_status_code', self._status_code)
         return res
 
     _execute = wrap_execute('request')(tornado.web.RequestHandler._execute)
     finish = wrap_finish(finish)
+    _stack_context_handle_exception = wrap_exception(tornado.web.RequestHandler._stack_context_handle_exception)
 
 
 # We need a custom version of this decorator so that we can pass in our ziggy
