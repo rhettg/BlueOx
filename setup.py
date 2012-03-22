@@ -21,7 +21,7 @@ from distutils.core import setup
 setup(
     name='ziggy',
     #version=ziggy.__version__,
-    version='0.0.1',
+    version='0.1.0',
     description='Ziggy Python Application Logging',
     long_description=open('README.md').read(),
     author='Rhett Garber',
