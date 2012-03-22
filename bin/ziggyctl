@@ -54,6 +54,9 @@ def main():
                 print "Lag: %f secs" % resp['lag']
 
             print
+            for name, name_data in resp['hosts'].iteritems():
+                print "  %32s  Last %s (%d secs ago)" % (name, datetime.datetime.fromtimestamp(name_data['last']), time.time() - name_data['last'])
+            print
             for name, name_data in resp['events'].iteritems():
                 print "  %32s  Last %s (%d secs ago)" % (name, datetime.datetime.fromtimestamp(name_data['last']), time.time() - name_data['last'])
     else:
