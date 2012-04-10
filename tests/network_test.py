@@ -1,4 +1,5 @@
 import random
+import struct
 
 from testify import *
 import zmq
@@ -49,7 +50,11 @@ class NetworkSendTestCase(TestCase):
             self.context.set('foo', True)
             self.context.set('bar.baz', 10.0)
 
-        raw_data = self.server.recv()
+        event_meta, raw_data = self.server.recv_multipart()
+        network.check_meta_version(event_meta)
+        _, event_time, event_host, event_type = struct.unpack(network.META_STRUCT_FMT, event_meta)
+        assert_equal(event_type, 'test')
+
         data = bson.loads(raw_data)
         assert_equal(data['id'], 1)
         assert_equal(data['type'], 'test')

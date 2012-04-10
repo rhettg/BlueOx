@@ -19,11 +19,14 @@ import sys
 import io
 import logging
 import signal
+import struct
 import time
 
 import json
 import zmq
 import bson
+
+from blueox import network
 
 # How long do we wait for network traffic before running our poll loop anyway.
 POLL_LOOP_TIMEOUT_MS = 1000
@@ -198,8 +201,16 @@ def main():
         log_files = dict((name, stream) for name, stream in log_files.iteritems() if stream.poll())
 
         if collector_sock in ready:
-            event_data = collector_sock.recv()
-            event = bson.loads(event_data)
+            event_meta, event_data = collector_sock.recv_multipart()
+            try:
+                network.check_meta_version(event_meta)
+            except ValueError:
+                log.warning("Failed to decode event due to version mismatch")
+                continue
+
+            # See blueox.network for how this is packed.
+            _, event_time, event_host, event_type = struct.unpack(network.META_STRUCT_FMT, event_meta)
+            event = {'type': event_type, 'end': event_time, 'host': event_host}
 
             collect_stats(stats, event)
 
@@ -224,7 +235,7 @@ def main():
                     log_files[type_name] = LogFileStream(options.log_path, type_name)
 
                 log.debug("writing to %s", type_name)
-                log_files[type_name].write(event['start'], event_data)
+                log_files[type_name].write(event['end'], event_data)
         elif control_sock in ready:
             control_data = control_sock.recv()
             request = bson.loads(control_data)
@@ -242,6 +253,8 @@ def main():
                 continue_running = False
             else:
                 control_sock.send(bson.dumps({'error': "Unknown Command"}))
+        else:
+            break
 
     collector_sock.close(0)
     control_sock.close(0)
