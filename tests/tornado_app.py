@@ -1,64 +1,64 @@
 import pprint
 import time
-import ziggy
+import blueox
 import random
-import ziggy.tornado_utils
+import blueox.tornado_utils
 
-ziggy.tornado_utils.install()
+blueox.tornado_utils.install()
 
 import tornado.web
 import tornado.gen
 import tornado.ioloop
 
 
-class MainHandler(ziggy.tornado_utils.SampleRequestHandler):
+class MainHandler(blueox.tornado_utils.SampleRequestHandler):
     def get(self):
         self.write("Hello, world")
 
-class AsyncHandler(ziggy.tornado_utils.SampleRequestHandler):
+class AsyncHandler(blueox.tornado_utils.SampleRequestHandler):
     @tornado.web.asynchronous
     @tornado.gen.engine
     def get(self):
         loop = tornado.ioloop.IOLoop.instance()
 
-        req_id = self.ziggy.id
+        req_id = self.blueox.id
 
         called = yield tornado.gen.Task(loop.add_timeout, time.time() + random.randint(1, 5))
 
-        with ziggy.Context('request.extra'):
-            ziggy.set('continue_id', req_id)
+        with blueox.Context('request.extra'):
+            blueox.set('continue_id', req_id)
 
         self.write("Hello, world")
         self.finish()
 
 
-class AsyncCrashHandler(ziggy.tornado_utils.SampleRequestHandler):
+class AsyncCrashHandler(blueox.tornado_utils.SampleRequestHandler):
     @tornado.web.asynchronous
     @tornado.gen.engine
     def get(self):
         loop = tornado.ioloop.IOLoop.instance()
 
-        req_id = self.ziggy.id
+        req_id = self.blueox.id
 
         called = yield tornado.gen.Task(loop.add_timeout, time.time() + random.randint(1, 5))
 
         raise Exception("This Handler is Broken!")
 
 
-class ManualAsyncHandler(ziggy.tornado_utils.SampleRequestHandler):
+class ManualAsyncHandler(blueox.tornado_utils.SampleRequestHandler):
     @tornado.web.asynchronous
     def get(self):
-        pprint.pprint(ziggy.context._contexts)
+        pprint.pprint(blueox.context._contexts)
         loop = tornado.ioloop.IOLoop.instance()
 
         loop.add_timeout(time.time() + random.randint(1, 5), self._complete_get)
         return
 
     def _complete_get(self):
-        self.ziggy.start()
+        self.blueox.start()
 
-        with ziggy.Context('request.extra'):
-            ziggy.set('continue_id', self.ziggy.id)
+        with blueox.Context('request.extra'):
+            blueox.set('continue_id', self.blueox.id)
 
         self.write("Hello, world")
         self.finish()
@@ -74,7 +74,7 @@ def logit(ctx):
     pprint.pprint(ctx.to_dict())
 
 if __name__ == "__main__":
-    ziggy.configure(None, None, recorder=logit)
+    blueox.configure(None, None, recorder=logit)
     application.listen(8888)
     tornado.ioloop.IOLoop.instance().start()
 

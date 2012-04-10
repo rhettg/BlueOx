@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-ziggy.timer
+blueox.timer
 ~~~~~~~~
 
 This module has a timer context manager for easily tracking wall-clock time for some execution

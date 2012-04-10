@@ -4,9 +4,9 @@ from testify import *
 import zmq
 import bson
 
-from ziggy import utils
-from ziggy import network
-from ziggy import context
+from blueox import utils
+from blueox import network
+from blueox import context
 
 class NoNetworkSendTestCase(TestCase):
     def test(self):

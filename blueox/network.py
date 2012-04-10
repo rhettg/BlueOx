@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 """
-ziggy.util
+blueox.network
 ~~~~~~~~
 
-This module provides utility functions that are used within Ziggy
+This module provides our interface into ZeroMQ
 
 :copyright: (c) 2012 by Rhett Garber.
 :license: ISC, see LICENSE for more details.
@@ -35,7 +35,7 @@ def send(context):
         try:
             _zmq_socket.send(bson.dumps(context.to_dict()), zmq.NOBLOCK)
         except zmq.ZMQError, e:
-            log.exception("Failed sending ziggy event, buffer full?")
+            log.exception("Failed sending blueox event, buffer full?")
     else:
         log.info("Skipping sending event %s", context.name)
 

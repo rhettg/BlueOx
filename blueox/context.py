@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-ziggy.context
+blueox.context
 ~~~~~~~~
 
 This module provides the concept of 'Context' for collecting data that will

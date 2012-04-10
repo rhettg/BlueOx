@@ -9,9 +9,9 @@ import pprint
 import bson
 import zmq
 
-import ziggy.client
+import blueox.client
 
-log = logging.getLogger('ziggyview')
+log = logging.getLogger('blueox.view')
 
 def setup_logging(options):
     if len(options.verbose) > 1:
@@ -38,9 +38,9 @@ def main():
 
     setup_logging(options)
     if sys.stdin.isatty():
-        log.info("Loading stream from ziggyd")
+        log.info("Loading stream from oxd")
 
-        out_stream = ziggy.client.subscribe_stream(options.host, options.type_name)
+        out_stream = blueox.client.subscribe_stream(options.host, options.type_name)
     else:
         if options.type_name is not None:
             parser.error("Can't specify a name from stdin")
@@ -48,10 +48,10 @@ def main():
 
         log.info("Loading stream from stdin")
         stdin = io.open(sys.stdin.fileno(), mode='rb', closefd=False)
-        out_stream = ziggy.client.decode_stream(stdin)
+        out_stream = blueox.client.decode_stream(stdin)
 
     if options.group:
-        out_stream = ziggy.client.Grouper(out_stream)
+        out_stream = blueox.client.Grouper(out_stream)
 
     for line in out_stream:
         if options.pretty:

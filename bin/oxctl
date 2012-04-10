@@ -9,7 +9,7 @@ import pprint
 import zmq
 import bson
 
-log = logging.getLogger('ziggyview')
+log = logging.getLogger('blueox.ctl')
 
 def setup_logging(options):
     if len(options.verbose) > 1:

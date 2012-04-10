@@ -1,5 +1,11 @@
+blueox (0.2.0)
+
+  * Rename so as to have a unique pypi name.
+
+-- Rhett Garber <rhettg@gmail.com>  Tue, 10 Apr 2012 14:10:00 -0700
+
 ziggy (0.1.0)
 
   * Initial Release
 
--- Rhett Garber <rhettg@gmail.com>  Thu, 22 Aug 2012 15:53:00 -0700
+-- Rhett Garber <rhettg@gmail.com>  Thu, 22 Mar 2012 15:53:00 -0700

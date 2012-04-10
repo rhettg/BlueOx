@@ -3,10 +3,10 @@
 # -*- coding: utf-8 -*-
 
 """
-ziggyd
+oxd
 ~~~~~~~~
 
-Main logging daemon for ziggy events.
+Main logging daemon for BlueOx events.
 
 :copyright: (c) 2012 by Rhett Garber
 :license: ISC, see LICENSE for more details.
@@ -34,7 +34,7 @@ FILE_POLL_INTERVAL = 1.0
 # How long before we close an open idle file
 FILE_IDLE_TIMEOUT = 60.0
 
-log = logging.getLogger("ziggy.d")
+log = logging.getLogger("blueox.d")
 
 def setup_logging(options):
     if len(options.verbose) > 1:

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This module contains the set of ziggy's exceptions
+This module contains the set of Blue Ox's exceptions
 
 :copyright: (c) 2012 by Rhett Garber
 :license: ISC, see LICENSE for more details.

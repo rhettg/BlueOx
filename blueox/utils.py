@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 """
-ziggy.util
+blueox.utils
 ~~~~~~~~
 
-This module provides utility functions that are used within Ziggy
+This module provides utility functions that are used within BlueOx
 
 :copyright: (c) 2012 by Rhett Garber.
 :license: ISC, see LICENSE for more details.

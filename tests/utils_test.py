@@ -1,6 +1,6 @@
 from testify import *
 
-from ziggy import utils
+from blueox import utils
 
 class SimpleKeyParseTestCase(TestCase):
     @setup

@@ -1,7 +1,7 @@
 from testify import *
 
-import ziggy
-from ziggy import context
+import blueox
+from blueox import context
 
 class SimpleTestCase(TestCase):
     def test(self):
@@ -29,18 +29,18 @@ class NestedIDTestCase(TestCase):
 
 class ModuleLevelTestCase(TestCase):
     def test(self):
-        with ziggy.Context('test', 5):
-            ziggy.set('foo', True)
+        with blueox.Context('test', 5):
+            blueox.set('foo', True)
 
 class EmptyModuleLevelTestCase(TestCase):
     def test(self):
-        ziggy.set('foo', True)
+        blueox.set('foo', True)
 
 class SampleTestCase(TestCase):
     def test(self):
         enabled = []
         for _ in range(100):
-            context = ziggy.Context('test', 5, sample=('test', 0.25))
+            context = blueox.Context('test', 5, sample=('test', 0.25))
             enabled.append(1 if context.enabled else 0)
         
         assert 40 > sum(enabled) > 15
@@ -50,11 +50,11 @@ class ParentSampleTestCase(TestCase):
     def test(self):
         enabled = []
         for _ in range(100):
-            parent_context = ziggy.Context('test', 5)
+            parent_context = blueox.Context('test', 5)
             with parent_context:
                 sub_enabled = []
                 for _ in range(10):
-                    context = ziggy.Context('.sub', sample=('..', 0.25))
+                    context = blueox.Context('.sub', sample=('..', 0.25))
                     sub_enabled.append(1 if context.enabled else 0)
                     enabled.append(1 if context.enabled else 0)
                 assert all(sub_enabled) or not any(sub_enabled)

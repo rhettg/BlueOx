@@ -6,35 +6,27 @@ import sys
 import glob
 from distutils.core import setup
 
-# Some of this would be much nicer if I could put  constants in one place by
-# importing the package
-# import ziggy
+PACKAGES = ['blueox']
 
-# publish package
-#if sys.argv[-1] == 'publish':
-#    os.system('python setup.py sdist upload')
-#    sys.exit()
-#
-## run tests
-#if sys.argv[-1] == 'test':
-#    os.system('python test_requests.py')
-#    sys.exit()
+def get_init_val(val, packages=PACKAGES):
+    pkg_init = "%s/__init__.py" % PACKAGES[0]
+    value = '__%s__' % val
+    fn = open(pkg_init)
+    for line in fn.readlines():
+        if line.startswith(value):
+            return line.split('=')[1].strip().strip("'")
 
 
 setup(
-    name='ziggy',
-    #version=ziggy.__version__,
-    version='0.1.0',
-    description='Ziggy Python Application Logging',
-    long_description=open('README').read(),
+    name='py-%s' % get_init_val('title'),
+    version=get_init_val('version'),
+    description=get_init_val('description'),
+    long_description=open('README.md').read(),
     classifiers=["Topic :: System :: Logging", "Topic :: System :: Monitoring"],
-    author='Rhett Garber',
-    author_email='rhettg@gmail.com',
-    url='http://github.com/rhettg/Ziggy',
+    author=get_init_val('author'),
+    url=get_init_val('url'),
+    license=get_init_val('license'),
     package_data={'': ['LICENSE', 'NOTICE', 'README', 'README.md']},
     scripts=glob.glob("bin/*"),
-    #license=ziggy.__license__,
-    license="ISC",
-    packages=['ziggy'],
-
+    packages=PACKAGES
 )

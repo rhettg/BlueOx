@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 
 """
-ziggy.logger
+blueox.logger
 ~~~~~~~~
 
-This module provides integration with ziggy and standard python logging module.
+This module provides integration with blueox and standard python logging module.
 :copyright: (c) 2012 by Rhett Garber
 :license: ISC, see LICENSE for more details.
 
@@ -15,7 +15,7 @@ import traceback
 from .context import Context
 
 class LogHandler(logging.Handler):
-    """Handler to provide log events as ziggy events.
+    """Handler to provide log events as blueox events.
 
     Records standard fields such as logger name, level the message and if an
     exception was provided, the string formatted exception.

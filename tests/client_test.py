@@ -1,8 +1,8 @@
 import pprint
 from testify import *
 
-import ziggy
-from ziggy import client
+import blueox
+from blueox import client
 
 class SimpleGrouperTest(TestCase):
     @setup

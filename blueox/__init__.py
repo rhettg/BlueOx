@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Ziggy
+blueox
 ~~~~~~~~
 
 :copyright: (c) 2012 by Rhett Garber
@@ -9,8 +9,8 @@ Ziggy
 
 """
 
-__title__ = 'ziggy'
-__version__ = '0.1.0'
+__title__ = 'blueox'
+__version__ = '0.2.0'
 __build__ = 0
 __author__ = 'Rhett Garber'
 __license__ = 'ISC'
@@ -30,12 +30,12 @@ log = logging.getLogger(__name__)
 
 
 def configure(host, port, recorder=None):
-    """Initialize ziggy
+    """Initialize blueox
 
-    This instructs the ziggy system where to send it's logging data. If ziggy is not configured, log data will
+    This instructs the blueox system where to send it's logging data. If blueox is not configured, log data will
     be silently dropped.
 
-    Currently we support logging through the network (and the configured host and port) to a ziggyd instances, or
+    Currently we support logging through the network (and the configured host and port) to a blueoxd instances, or
     to the specified recorder function
     """
     global _record_function
@@ -45,6 +45,6 @@ def configure(host, port, recorder=None):
         network.init(host, port)
         context._recorder_function = network.send
     else:
-        log.info("Empty ziggy configuration")
+        log.info("Empty blueox configuration")
         context._recorder_function = None
 

@@ -1,6 +1,6 @@
 .PHONY: all pep8 pyflakes clean dev
 
-PYTHON=/usr/bin/python
+PYTHON=python
 GITIGNORES=$(shell cat .gitignore |tr "\\n" ",")
 
 all: pep8
