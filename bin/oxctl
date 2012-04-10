@@ -48,9 +48,9 @@ def main():
             print resp
         else:
             print "Host: %s" % options.host
-            if 'last' in resp:
+            if resp.get('last'):
                 print "Last: %s (%d secs ago)" % (datetime.datetime.fromtimestamp(resp['last']), time.time() - resp['last'])
-            if 'lag' in resp:
+            if resp.get('lag'):
                 print "Lag: %f secs" % resp['lag']
 
             print

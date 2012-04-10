@@ -253,8 +253,6 @@ def main():
                 continue_running = False
             else:
                 control_sock.send(bson.dumps({'error': "Unknown Command"}))
-        else:
-            break
 
     collector_sock.close(0)
     control_sock.close(0)
