@@ -1,6 +1,7 @@
 blueox (0.2.0)
 
   * Rename so as to have a unique pypi name.
+  * Reduce CPU usage in oxd by avoiding full event decoding
 
 -- Rhett Garber <rhettg@gmail.com>  Tue, 10 Apr 2012 14:10:00 -0700
 
