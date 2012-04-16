@@ -1,0 +1,259 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Blueox by rhettg</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="javascripts/scale.fix.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Blueox</h1>
+<p>A library for python-based application logging and data collection</p>
+        <p class="view"><a href="https://github.com/rhettg/BlueOx">View the Project on GitHub <small>rhettg/BlueOx</small></a></p>
+        <ul>
+          <li><a href="https://github.com/rhettg/BlueOx/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/rhettg/BlueOx/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/rhettg/BlueOx">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <p>BlueOx is a python based logging and data collection framework. The problem it
+attempts to solve is one where you have multiple python processes across
+multiple hosts processing some sort of requests. You generally want to collect:</p>
+
+<ul>
+<li>Performance data (counters, timers, etc)</li>
+<li>User activity</li>
+<li>Errors (and debugging data)</li>
+</ul><p>Use BlueOx to record that data, aggregate it to a central logging server where
+it can be written to disk.</p>
+
+<p>In addition, it's often useful to be able to plug reporting scripts into the
+logging server so as to generate live stats and reports or do ad hoc analysis.</p>
+
+<p>BlueOx's collection functionality is fairly advanced allowing heirarchies of
+collectors and queuing in the event of failure. For example, it's recommend to
+run an instance of <code>oxd</code> on each host, and then configure each of those
+collectors to forward log events to a central collector on a dedicated log
+machine.</p>
+
+<p>BlueOx is named after Paul Bunyan's Blue Ox "Babe". A great help for giant logging problems.</p>
+
+<h2>Installation</h2>
+
+<p>BlueOx requires Python 2.7, ZeroMQ and BSON.</p>
+
+<p>The full python library requirements are given <code>requirements.txt</code> and is designed to be used with virtualenv.</p>
+
+<p>Tornado is not required for operation of BlueOx, but development and running tests will likely require it.</p>
+
+<p>I expect debian packaging will be developed soon.</p>
+
+<h2>Application Integration</h2>
+
+<p>Applications emit BlueOx events by using a context manager and globally accessible BlueOx functions.</p>
+
+<p>Events have a type, which indicates what will be ultimately logged together.</p>
+
+<p>Events also have an id that can be used to tie them together with other related events.</p>
+
+<p>For example, in a web application, an application might choose the use BlueOx as follows:</p>
+
+<pre><code>def handle(request):
+    with blueox.Context('request'):
+        blueox.set('user_agent', self.headers['UserAgent'])
+
+        with blueox.timeit('request_time'):
+            do_stuff()
+
+        blueox.set('response.status', self.response.status)
+        blueox.set('response.size', len(self.response.body))
+</code></pre>
+
+<p>The above sample would generate one event that contains all the details about a
+specific request.</p>
+
+<p>Contexts can be heirarchical. This means you can generate sub-events that
+are related to the parent event and can be joined together in post-processing by the common id they share.
+Indicate you want this behavior for your context by naming with a prefixing '.'.</p>
+
+<p>For example, inside some application code (in <code>do_stuff()</code> above), you might execute some sql queries.</p>
+
+<pre><code>def execute(cursor, query, args):
+    with blueox.Context('.sql'):
+        blueox.set('query', query)
+        with blueox.timeit('query_time'):
+            res = cursor.execute(query, args)
+        blueox.set('row_count', len(res))
+    return res
+</code></pre>
+
+<p>Each SQL query would then be logged as a seperate event. However, each event
+will have the unique id provided by the parent <code>request</code> context. The name of the context will become <code>request.sql</code>.</p>
+
+<p>You can provide you're own id or allow BlueOx to autogenerate one for the top-level context.</p>
+
+<p>BlueOx also provides the ability to do sampling. This means only a set
+percentage of generate events will actually be logged. You can choose sampling
+based on any level of the context:</p>
+
+<pre><code>with blueox.Context('.memcache', sample=('..', 0.25)):
+    blueox.set('key', key)
+    client.set(key, value)
+</code></pre>
+
+<p>In the above example, only 25% of requests will include the memcache data. If
+the sample argument where <code>('memcache', 0.25)</code> then 25% of all memcache
+events would be logged.</p>
+
+<h3>Configuration</h3>
+
+<p>If BlueOx has not been explicitly configured, all the calls to BlueOx will essentially be no-ops. This is
+rather useful in testing contexts so as to not generate a bunch of bogus data.</p>
+
+<p>For production use, you'll need to set the collection host and port:</p>
+
+<pre><code>blueox.configure("127.0.0.1", 3514)
+</code></pre>
+
+<h3>Logging module integration</h3>
+
+<p>BlueOx comes with a log handler that can be added to your <code>logging</code> module setup for easy integration into existing logging setups.</p>
+
+<p>For example:</p>
+
+<pre><code>handler = blueox.LogHandler()
+handler.setLevel(logging.INFO)
+logging.getLogger('').addHandler(handler)
+</code></pre>
+
+<p>By default, all log event will show up as a sub-event <code>.log</code> but this can be
+configured by passing a type_name to the <code>LogHandler</code></p>
+
+<h3>Tornado Integration</h3>
+
+<p>BlueOx comes out of the box with support for Tornado web server. This is
+particularly challenging since one of the goals for BlueOx is to, like the
+logging module, have globally accessible contexts so you don't have to pass
+anything around to have access to all the heirarchical goodness.</p>
+
+<p>Since you'll likely want to have a context per web request, it's difficult o
+work around tornado's async machinery to make that work well.
+Fear not, batteries included: <code>blueox.tornado_utils</code></p>
+
+<p>The most straightfoward way to integrate BlueOx into a tornado application requires two things:</p>
+
+<ol>
+<li>Allow BlueOx to monkey patch async tooling (tornado.gen primarily)</li>
+<li>Use or re-implement the provided base request handler <code>blueox.tornado_utils.SampleRequestHandler</code>
+</li>
+</ol><p>To install the monkey patching, add the line:</p>
+
+<pre><code>blueox.tornado_utils.install()
+</code></pre>
+
+<p>This must be executed BEFORE any of your RequestHandlers are imported.</p>
+
+<p>This is required if you are using <code>@web.asynchronous</code> and <code>@gen.engine</code>. If you are
+manually managing callbacks (which you probably shouldn't be), you'll need
+manually recall the BlueOx context with <code>self.blueox.start()</code></p>
+
+<p>See <code>tests/tornado_app.py</code> for an example of all this.</p>
+
+<p>If you have your own base request handlers you'll likely want to reimplement
+based on the one provided rather than trying to use inheritance. This will also
+make it really clear what you are including in your top-level event and allow
+you to name it whatever you want.</p>
+
+<h2>Event Collection</h2>
+
+<p>Events are collected by a BlueOx daemon (<code>oxd</code>) and can be configured in a variety of topologies.</p>
+
+<p>It's recommended that you run a BlueOx daemon on each host, and then a master BlueOx daemon that collects 
+all the streams together for logging. In this configuration, failure of the centralized collector would not
+result in any data loss as the local instances would just queue up their events.</p>
+
+<p>So on your local machine, you'd run:</p>
+
+<pre><code>oxd --forward=master:3514
+</code></pre>
+
+<p>And on the master collection machine, you'd run:</p>
+
+<pre><code>oxd --collect="*:3514" --log-path=/var/log/blueox/
+</code></pre>
+
+<p>Logs are stored in BSON format, so you'll need some tooling for doing log
+analysis. This is easily done with the tool <code>oxview</code>.</p>
+
+<p>For example:</p>
+
+<pre><code>cat /var/log/blueox/request.120310.bson | oxview
+
+oxview --log-path=/var/log/blueox --type-name="request" --start-date=20120313 --end-date=20120315
+</code></pre>
+
+<p>Where <code>request</code> is the channel you want to examine.</p>
+
+<p>You can also connect to <code>oxd</code> and get a live streaming of log data:</p>
+
+<pre><code>oxview -H localhost:3513 --type-name="request*"
+</code></pre>
+
+<p>Note the use of '*' to indicate a prefix query for the type filter. This will
+return all events with a type that begins with 'request'</p>
+
+<h3>A Note About Ports</h3>
+
+<p>There are several types of network ports in use with BlueOx:</p>
+
+<ol>
+<li>Control Port (default 127.0.0.1:3513)</li>
+<li>Collection Port (default 127.0.0.1:3514)</li>
+<li>Streaming Port (no default, randomonly assigned)</li>
+</ol><p>Both the Control and Collection ports are configurable from the command line.</p>
+
+<p>When configuring forwarding between oxd instances, you'll want to always use
+the collection port. </p>
+
+<p>When configuring an application to send data to a oxd instance, you'll want
+to use the collection port as well.</p>
+
+<p>For administrative (and <code>oxview</code> work) you'll use the control port. The
+control port (and BlueOx administrative interface) can be used to discover all
+the other ports. The reason the collection port must be configured explicitly
+for actual logging purposes is to better handle reconnects and failures.</p>
+
+<h2>Administration</h2>
+
+<p>Use the <code>oxctl</code> tool to collect useful stats or make other adjustments to a running oxd instance.</p>
+
+<p>For example:</p>
+
+<pre><code>oxctl status
+</code></pre>
+
+<p>or</p>
+
+<pre><code>oxctl shutdown
+</code></pre>
+      </section>
+    </div>
+    <footer>
+      <p>Project maintained by <a href="https://github.com/rhettg">rhettg</a></p>
+      <p>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></p>
+    </footer>
+    <!--[if !IE]><script>fixScale(document);</script><!--<![endif]-->
+    
+  </body>
+</html>
