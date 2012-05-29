@@ -147,7 +147,7 @@ def gen_engine(func):
 # Custom version of gen.Runner that starts and stops the blueox context
 class BlueOxRunner(tornado.gen.Runner):
     def __init__(self, gen, blueox_context):
-        self.blueox_ctx = blueox
+        self.blueox_ctx = blueox_context
         super(BlueOxRunner, self).__init__(gen)
 
     def run(self):
@@ -166,7 +166,7 @@ class AsyncHTTPClient(tornado.simple_httpclient.SimpleAsyncHTTPClient):
         return super(AsyncHTTPClient, self).__init__(*args, **kwargs)
 
     def fetch(self, request, callback, **kwargs):
-        ctx = blueox.Context(self.blueox)
+        ctx = blueox.Context(self.blueox_name)
         ctx.start()
         if isinstance(request, basestring):
             ctx.set('request.uri', request)

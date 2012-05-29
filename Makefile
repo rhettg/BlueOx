@@ -17,8 +17,8 @@ env:
 	virtualenv -p $(PYTHON) --no-site-packages env
 
 env/.pip: env requirements.txt
-	env/bin/pip -E env install -r requirements.txt
-	env/bin/pip -E env install -e .
+	env/bin/pip install -r requirements.txt
+	env/bin/pip install -e .
 	touch env/.pip
 
 test: env/.pip
