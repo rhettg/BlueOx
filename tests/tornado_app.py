@@ -9,6 +9,7 @@ blueox.tornado_utils.install()
 import tornado.web
 import tornado.gen
 import tornado.ioloop
+import tornado.autoreload
 
 
 class MainHandler(blueox.tornado_utils.SampleRequestHandler):
@@ -74,7 +75,15 @@ def logit(ctx):
     pprint.pprint(ctx.to_dict())
 
 if __name__ == "__main__":
+    # Iniatialize the blue ox system. Providing a recorder function rather than a host and port
+    # will allow us to receive the data right away rather than forwarding to an oxd instance.
     blueox.configure(None, None, recorder=logit)
+
+    # Instruct tornado's autoreload to shutodwn blueox during reload.
+    # Note: Since we're not actually using the network in this example, this
+    # probably isn't strictly necessary.
+    tornado.autoreload.add_reload_hook(blueox.shutdown)
+
     application.listen(8888)
     tornado.ioloop.IOLoop.instance().start()
 

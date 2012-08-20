@@ -139,6 +139,9 @@ This is required if you are using `@web.asynchronous` and `@gen.engine`. If you 
 manually managing callbacks (which you probably shouldn't be), you'll need
 manually recall the BlueOx context with `self.blueox.start()`
 
+If you are using the `autoreload` module for tornado, you should also add a
+call to `shutdown()` as a reload hook to avoid leaking file descriptors.
+
 See `tests/tornado_app.py` for an example of all this.
 
 If you have your own base request handlers you'll likely want to reimplement

@@ -68,6 +68,7 @@ def close():
     global _zmq_context
     global _zmq_socket
 
-    _zmq_socket.close()
-    _zmq_socket = None
+    if _zmq_socket:
+        _zmq_socket.close()
+        _zmq_socket = None
     _zmq_context = None

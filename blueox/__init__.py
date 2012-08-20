@@ -50,3 +50,5 @@ def configure(host, port, recorder=None):
         log.info("Empty blueox configuration")
         context._recorder_function = None
 
+def shutdown():
+    network.close()
