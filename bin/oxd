@@ -14,6 +14,7 @@ Main logging daemon for BlueOx events.
 """
 import argparse
 import datetime
+import errno
 import os
 import sys
 import io
@@ -195,6 +196,14 @@ def main():
         except KeyboardInterrupt, SystemExit:
             continue_running = False
             break
+        except zmq.ZMQError, e:
+            if e.errno == errno.EINTR:
+                # If this is from a SIGTERM, we have a handler for that and the
+                # loop should exit gracefull.
+                continue
+            else:
+                raise
+
 
         log.debug("Poller returned: %r", ready)
 
