@@ -49,6 +49,10 @@ def setup_logging(options):
         level = logging.WARNING
     
     log_format = "%(asctime)s %(levelname)s:%(name)s: %(message)s"
+
+    # We just log straight to stdout. Generally oxd is run by some process that
+    # handles collecting logging for you, like upstart or supervisord. It would be
+    # easy enough to add an option if it was needed by someone though.
     logging.basicConfig(level=level, format=log_format, stream=sys.stdout)
 
 class LogFileStream(object):
