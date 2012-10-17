@@ -14,7 +14,7 @@ import collections
 import logging
 import struct
 
-import bson
+import msgpack
 import zmq
 
 log = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ def decode_stream(stream):
 
         size = struct.unpack("H", size_data)[0]
         data = stream.read(size)
-        yield bson.loads(data)
+        yield msgpack.unpackb(data)
 
 def retrieve_stream_host(context, control_host):
     poller = zmq.Poller()
@@ -42,11 +42,11 @@ def retrieve_stream_host(context, control_host):
     sock.connect("tcp://%s" % control_host)
     poller.register(sock, zmq.POLLIN)
 
-    sock.send(bson.dumps({'cmd': 'SOCK_STREAM'}))
+    sock.send(msgpack.packb({'cmd': 'SOCK_STREAM'}))
 
     result = dict(poller.poll(5000))
     if sock in result:
-        result = bson.loads(sock.recv())
+        result = msgpack.unpackb(sock.recv())
         host, _ = control_host.split(':')
         return "%s:%d" % (host, result['port'])
     else:
@@ -94,7 +94,7 @@ def subscribe_stream(control_host, subscribe):
                 if not prefix and subscription and channel != subscription:
                     continue
 
-                yield bson.loads(data)
+                yield msgpack.unpackb(data)
             else:
                 break
 

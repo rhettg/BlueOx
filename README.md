@@ -26,7 +26,7 @@ BlueOx is named after Paul Bunyan's Blue Ox "Babe". A great help for giant loggi
 Installation
 ----------------
 
-BlueOx requires Python 2.7, ZeroMQ and BSON.
+BlueOx requires Python 2.7, ZeroMQ and MsgPack.
 
 The full python library requirements are given `requirements.txt` and is designed to be used with virtualenv.
 
@@ -167,8 +167,9 @@ And on the master collection machine, you'd run:
 
     oxd --collect="*:3514" --log-path=/var/log/blueox/
 
-Logs are stored in BSON format, so you'll need some tooling for doing log
-analysis. This is easily done with the tool `oxview`.
+Logs are encoded in the MsgPack format (http://msgpack.org/), so you'll need
+some tooling for doing log analysis. This is easily done with the tool
+`oxview`.
 
 For example:
 

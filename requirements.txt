@@ -2,5 +2,5 @@ testify
 pep8
 pyflakes
 pyzmq
-bson
+msgpack-python
 tornado

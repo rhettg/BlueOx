@@ -3,7 +3,7 @@ import struct
 
 from testify import *
 import zmq
-import bson
+import msgpack
 
 from blueox import utils
 from blueox import network
@@ -55,7 +55,7 @@ class NetworkSendTestCase(TestCase):
         _, event_time, event_host, event_type = struct.unpack(network.META_STRUCT_FMT, event_meta)
         assert_equal(event_type, 'test')
 
-        data = bson.loads(raw_data)
+        data = msgpack.unpackb(raw_data)
         assert_equal(data['id'], 1)
         assert_equal(data['type'], 'test')
         assert_equal(utils.get_deep(data['body'], "bar.baz"), 10.0)

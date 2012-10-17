@@ -1,3 +1,11 @@
+blueox (0.3.0)
+
+  * Convert to MsgPack format. Not backwards compatible.
+  * Handle EINTR, raised by newer zmq versions.
+  * Hooks for shutting BlueOx down, prevents hangs.
+
+-- Rhett Garber <rhettg@gmail.com>  Wed, 17 Oct 2012 11:30:00 -0700
+
 blueox (0.2.0)
 
   * Rename so as to have a unique pypi name.

@@ -14,7 +14,7 @@ import logging
 import struct
 
 import zmq
-import bson
+import msgpack
 
 log = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ def send(context):
             meta_data = struct.pack(META_STRUCT_FMT, META_STRUCT_VERSION, context_dict['end'], context_dict['host'], context_dict['type'])
 
             _zmq_socket.send(meta_data, zmq.NOBLOCK|zmq.SNDMORE)
-            _zmq_socket.send(bson.dumps(context_dict), zmq.NOBLOCK)
+            _zmq_socket.send(msgpack.packb(context_dict), zmq.NOBLOCK)
         except zmq.ZMQError, e:
             log.exception("Failed sending blueox event, buffer full?")
     else:
