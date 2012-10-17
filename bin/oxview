@@ -6,7 +6,6 @@ import struct
 import logging
 import pprint
 
-import bson
 import zmq
 
 import blueox.client

@@ -25,7 +25,7 @@ import time
 
 import json
 import zmq
-import bson
+import msgpack
 
 from blueox import network
 
@@ -247,21 +247,21 @@ def main():
                 log_files[type_name].write(event['end'], event_data)
         elif control_sock in ready:
             control_data = control_sock.recv()
-            request = bson.loads(control_data)
+            request = msgpack.unpackb(control_data)
             log.info("Received control request: %r", request)
             
             if request['cmd'] == "SOCK_STREAM":
-                control_sock.send(bson.dumps({'port': streamer_sock_port}))
+                control_sock.send(msgpack.packb({'port': streamer_sock_port}))
             elif request['cmd'] == "SOCK_COLLECT":
                 _, port = options.collect.split(':')
-                control_sock.send(bson.dumps({'port': int(port)}))
+                control_sock.send(msgpack.packb({'port': int(port)}))
             elif request['cmd'] == 'STATUS':
-                control_sock.send(bson.dumps(build_stats(stats)))
+                control_sock.send(msgpack.packb(build_stats(stats)))
             elif request['cmd'] == 'SHUTDOWN':
-                control_sock.send(bson.dumps({'ok': True}))
+                control_sock.send(msgpack.packb({'ok': True}))
                 continue_running = False
             else:
-                control_sock.send(bson.dumps({'error': "Unknown Command"}))
+                control_sock.send(msgpack.packb({'error': "Unknown Command"}))
 
     collector_sock.close(0)
     control_sock.close(0)

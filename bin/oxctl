@@ -7,7 +7,7 @@ import logging
 import pprint
 
 import zmq
-import bson
+import msgpack
 
 log = logging.getLogger('blueox.ctl')
 
@@ -39,11 +39,11 @@ def main():
     sock.connect("tcp://" + options.host)
     poller.register(sock, zmq.POLLIN)
 
-    sock.send(bson.dumps({'cmd': 'STATUS'}))
+    sock.send(msgpack.packb({'cmd': 'STATUS'}))
 
     result = dict(poller.poll(5000))
     if sock in result:
-        resp = bson.loads(sock.recv())
+        resp = msgpack.unpackb(sock.recv())
         if options.raw:
             print resp
         else:
