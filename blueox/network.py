@@ -18,13 +18,13 @@ import msgpack
 
 log = logging.getLogger(__name__)
 
-META_STRUCT_FMT = ">Bf64p64p"
+META_STRUCT_FMT = "!Bd64p64p"
 
 # We're going to include a version byte in our meta struct for future
 # upgrading.  This is very quickly getting into the kind of bit packing I
 # wanted to avoid for a logging infrastructure, but the performance gain is
 # hard to ignore.
-META_STRUCT_VERSION = 0x2
+META_STRUCT_VERSION = 0x3
 def check_meta_version(meta):
     value, = struct.unpack(">B", meta[0])
     if value != META_STRUCT_VERSION:
