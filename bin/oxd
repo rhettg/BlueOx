@@ -236,6 +236,7 @@ def main():
             # If we are forwarding our data to another host, do so
             if forward_sock:
                 try:
+                    forward_sock.send(event_meta, zmq.NOBLOCK|zmq.SNDMORE)
                     forward_sock.send(event_data, zmq.NOBLOCK)
                 except zmq.ZMQError, e:
                     log.error("Error forwarding event data, buffer possibly overflowed: %r", e)
