@@ -1,3 +1,10 @@
+blueox (0.3.1)
+
+  * Fix client lib for reading log files.
+  * Fix an issue with forwarding log events
+
+-- Rhett Garber <rhettg@gmail.com>  Fri, 23 Nov 2012 10:06:00 -0700
+
 blueox (0.3.0)
 
   * Convert to MsgPack format. Not backwards compatible.
