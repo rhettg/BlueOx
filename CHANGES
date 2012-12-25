@@ -1,3 +1,9 @@
+blueox (0.4.0)
+
+  * Tornado upgrades for 2.4.1
+
+-- Rhett Garber <rhettg@gmail.com>  Mon, 24 Dec 2012 14:01:00 -0700
+
 blueox (0.3.1)
 
   * Fix client lib for reading log files.

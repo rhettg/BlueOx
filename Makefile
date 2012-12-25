@@ -15,6 +15,7 @@ dev: env env/.pip
 
 env:
 	virtualenv -p $(PYTHON) --no-site-packages env
+	echo `pwd`/vendor > env/lib/python2.7/site-packages/vendor.pth
 
 env/.pip: env requirements.txt
 	env/bin/pip install -r requirements.txt

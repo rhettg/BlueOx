@@ -23,6 +23,7 @@ log = logging.getLogger(__name__)
 import tornado.web
 import tornado.gen
 import tornado.simple_httpclient
+import tornado.stack_context
 
 import blueox
 
@@ -134,21 +135,35 @@ def gen_engine(func):
     """
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        gen = func(*args, **kwargs)
-        if isinstance(gen, types.GeneratorType):
-            blueox_ctx = getattr(args[0], 'blueox', None)
-            BlueOxRunner(gen, blueox_ctx).run()
-            return
-        assert gen is None, gen
-        # no yield, so we're done
+        runner = None
+
+        def handle_exception(typ, value, tb):
+            # if the function throws an exception before its first "yield"
+            # (or is not a generator at all), the Runner won't exist yet.
+            # However, in that case we haven't reached anything asynchronous
+            # yet, so we can just let the exception propagate.
+            if runner is not None:
+                return runner.handle_exception(typ, value, tb)
+            return False
+
+        with tornado.stack_context.ExceptionStackContext(handle_exception) as deactivate:
+            gen = func(*args, **kwargs)
+            if isinstance(gen, types.GeneratorType):
+                blueox_ctx = getattr(args[0], 'blueox', None)
+                runner = BlueOxRunner(gen, deactivate, blueox_ctx)
+                runner.run()
+                return
+            assert gen is None, gen
+            deactivate()
+            # no yield, so we're done
     return wrapper
 
 
 # Custom version of gen.Runner that starts and stops the blueox context
 class BlueOxRunner(tornado.gen.Runner):
-    def __init__(self, gen, blueox_context):
+    def __init__(self, gen, deactivate_stack_context, blueox_context):
         self.blueox_ctx = blueox_context
-        super(BlueOxRunner, self).__init__(gen)
+        super(BlueOxRunner, self).__init__(gen, deactivate_stack_context)
 
     def run(self):
         try:

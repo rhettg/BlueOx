@@ -26,7 +26,7 @@ class AsyncHandler(blueox.tornado_utils.SampleRequestHandler):
 
         called = yield tornado.gen.Task(loop.add_timeout, time.time() + random.randint(1, 5))
 
-        with blueox.Context('request.extra'):
+        with blueox.Context('.extra'):
             blueox.set('continue_id', req_id)
 
         self.write("Hello, world")
