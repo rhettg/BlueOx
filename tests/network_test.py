@@ -20,7 +20,7 @@ class NetworkSendTestCase(TestCase):
         self.context = context.Context('test', 1)
 
     @setup
-    def configure_network(self):
+    def init_network(self):
         self.port = random.randint(30000, 40000)
         network.init("127.0.0.1", self.port)
 
