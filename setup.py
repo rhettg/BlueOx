@@ -29,7 +29,7 @@ setup(
     license=get_init_val('license'),
     package_data={'': ['LICENSE', 'NOTICE', 'README', 'README.md']},
     scripts=glob.glob("bin/*"),
-    install_requires=['pyzmq','msgpack-python'],
-    requires=['pyzmq','msgpack-python'],
+    install_requires=['pyzmq','msgpack_python'],
+    requires=['pyzmq','msgpack_python'],
     packages=PACKAGES
 )

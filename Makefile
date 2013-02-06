@@ -11,13 +11,13 @@ pep8: .gitignore
 pyflakes:
 	env/bin/pyflakes bootstrap tests
 
-dev: env env/.pip
+dev: env/bin/activate env/.pip
 
-env:
+env/bin/activate:
 	virtualenv -p $(PYTHON) --no-site-packages env
 	echo `pwd`/vendor > env/lib/python2.7/site-packages/vendor.pth
 
-env/.pip: env requirements.txt
+env/.pip: env/bin/activate requirements.txt
 	env/bin/pip install -r requirements.txt
 	env/bin/pip install -e .
 	touch env/.pip

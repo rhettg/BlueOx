@@ -1,6 +1,3 @@
 testify
 pep8
 pyflakes
-pyzmq
-msgpack-python
-tornado
