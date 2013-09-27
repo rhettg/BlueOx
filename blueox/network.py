@@ -11,6 +11,7 @@ This module provides our interface into ZeroMQ
 
 """
 import logging
+import threading
 import struct
 
 import zmq
@@ -30,23 +31,30 @@ def check_meta_version(meta):
     if value != META_STRUCT_VERSION:
         raise ValueError(value)
 
+threadLocal = threading.local()
+
+# Context can be shared between threads
 _zmq_context = None
-_zmq_socket = None
+_connect_str = None
 
 def init(host, port):
     global _zmq_context
-    global _zmq_socket
+    global _connect_str
 
     _zmq_context = zmq.Context()
+    _connect_str = "tcp://%s:%d" % (host, port)
 
-    _zmq_socket = _zmq_context.socket(zmq.PUSH)
-    _zmq_socket.connect("tcp://%s:%d" % (host, port))
-    _zmq_socket.hwm = 100
+def _thread_connect():
+    if _zmq_context and not getattr(threadLocal, 'zmq_socket', None):
+        threadLocal.zmq_socket = _zmq_context.socket(zmq.PUSH)
+        threadLocal.zmq_socket.connect(_connect_str)
+        threadLocal.zmq_socket.hwm = 100
 
 def send(context):
-    if _zmq_socket is not None:
+    global _zmq_context
+    _thread_connect()
+    if threadLocal.zmq_socket is not None:
         try:
-
             # Our sending format is made up of two messages. The first has a
             # quick to unpack set of meta data that our collector is going to
             # use for routing and stats. This is much faster than having the
@@ -57,8 +65,8 @@ def send(context):
             assert len(context_dict['type']) < 64
             meta_data = struct.pack(META_STRUCT_FMT, META_STRUCT_VERSION, context_dict['end'], context_dict['host'], context_dict['type'])
 
-            _zmq_socket.send(meta_data, zmq.NOBLOCK|zmq.SNDMORE)
-            _zmq_socket.send(msgpack.packb(context_dict), zmq.NOBLOCK)
+            threadLocal.zmq_socket.send(meta_data, zmq.NOBLOCK|zmq.SNDMORE)
+            threadLocal.zmq_socket.send(msgpack.packb(context_dict), zmq.NOBLOCK)
         except zmq.ZMQError, e:
             log.exception("Failed sending blueox event, buffer full?")
     else:
@@ -66,9 +74,9 @@ def send(context):
 
 def close():
     global _zmq_context
-    global _zmq_socket
 
-    if _zmq_socket:
-        _zmq_socket.close()
-        _zmq_socket = None
+    if getattr(threadLocal, 'zmq_socket', None):
+        threadLocal.zmq_socket.close()
+        threadLocal.zmq_socket = None
+
     _zmq_context = None

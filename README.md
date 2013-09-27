@@ -150,6 +150,27 @@ make it really clear what you are including in your top-level event and allow
 you to name it whatever you want.
 
 
+### Django Integration
+
+BlueOx provides middleware that can be plugged in to any Django application.
+
+    MIDDLEWARE_CLASSES.append('blueox.contrib.django.middleware.Middleware')
+
+Default settings should work fine, but BlueOx can be customzized by setting
+something like the following:
+
+    BLUEOX_HOST=127.0.0.1
+    BLUEOX_PORT=3514
+    BLUEOX_NAME='myapp'
+
+The `request` keys are someone similiar between Tornado integration and Django,
+except that it's assumed Django is running under WSGI, where certain items like
+headers are not given raw.
+
+BlueOx also detects use of 'Dealer' middleware which adds a `revision` key to
+your request indicating the SCM version of your application. This will be
+included as a `version`.
+
 Event Collection
 -----------------
 
@@ -173,7 +194,7 @@ some tooling for doing log analysis. This is easily done with the tool
 
 For example:
 
-    cat /var/log/blueox/request.120310.bson | oxview
+    cat /var/log/blueox/request.120310.log | oxview
 
     oxview --log-path=/var/log/blueox --type-name="request" --start-date=20120313 --end-date=20120315
 
@@ -214,11 +235,8 @@ Use the `oxctl` tool to collect useful stats or make other adjustments to a runn
 
 For example:
 
-    oxctl status
+    oxctl
 
-or
-
-    oxctl shutdown
 
 
 Development

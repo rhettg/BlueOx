@@ -15,6 +15,7 @@ import time
 import os
 import random
 import struct
+import threading
 
 from . import utils
 from . import network
@@ -144,32 +145,41 @@ class Context(object):
         self.stop()
         self.done()
 
-_contexts = []
-_contexts_by_name = {}
+threadLocal = threading.local()
+
+def init_contexts():
+    if not getattr(threadLocal, 'init', None):
+        threadLocal._contexts = []
+        threadLocal._contexts_by_name = {}
+        threadLocal.init = True
 
 def _add_context(context):
-    if context.name in _contexts_by_name:
+    init_contexts()
+
+    if context.name in threadLocal._contexts_by_name:
         return
-    _contexts_by_name[context.name] = context
-    _contexts.append(context)
+    threadLocal._contexts_by_name[context.name] = context
+    threadLocal._contexts.append(context)
 
 def _get_context(name):
-    return _contexts_by_name.get(str(name))
+    return threadLocal._contexts_by_name.get(str(name))
 
 def _remove_context(context):
+    init_contexts()
     try:
-        del _contexts_by_name[context.name]
+        del threadLocal._contexts_by_name[context.name]
     except KeyError:
         pass
 
     try:
-        _contexts.remove(context)
+        threadLocal._contexts.remove(context)
     except ValueError:
         pass
 
 def current_context():
+    init_contexts()
     try:
-        return _contexts[-1]
+        return threadLocal._contexts[-1]
     except IndexError:
         return None
 

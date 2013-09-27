@@ -1,3 +1,10 @@
+blueox (0.5.0)
+
+  * Django middleware support
+  * Threadsafe (specifically to handle django dev server)
+
+-- Rhett Garber <rhettg@gmail.com>  Fri, 27 Sep 2013 18:53:00 -0700
+
 blueox (0.4.0)
 
   * Tornado upgrades for 2.4.1
