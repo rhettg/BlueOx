@@ -27,6 +27,14 @@ class NestedIDTestCase(TestCase):
                 assert_equal(c.id, 5)
 
 
+class NestedOverlapIDTestCase(TestCase):
+    def test(self):
+        with context.Context('test.bar', 5):
+            with context.Context('.bar.foo') as c:
+                assert_equal(c.name, 'test.bar.foo')
+                assert_equal(c.id, 5)
+
+
 class ModuleLevelTestCase(TestCase):
     def test(self):
         with blueox.Context('test', 5):

@@ -33,7 +33,13 @@ class Context(object):
             if parent_ctx is None:
                 self.name = type_name[1:]
             else:
-                self.name = parent_ctx.name + type_name
+                parent_parts = sorted(enumerate(parent_ctx.name.split('.')), reverse=True)
+                for ppart_ndx, ppart in parent_parts:
+                    if ppart == type_name.split('.')[1]:
+                        self.name = '.'.join(parent_ctx.name.split('.')[:ppart_ndx] + type_name.split('.')[1:])
+                        break
+                else:
+                    self.name = parent_ctx.name + type_name
         else:
             parent_ctx = None
             self.name = type_name

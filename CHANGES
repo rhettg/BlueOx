@@ -2,8 +2,9 @@ blueox (0.5.2)
 
   * Support for Celery
   * Fix for bad clients crashing oxd
+  * Support nested overlap in context names
 
--- Rhett Garber <rhettg@gmail.com>  Mon, 14 Oct 2013 17:22:00 -0700
+-- Rhett Garber <rhettg@gmail.com>  Tue, 15 Oct 2013 11:26:00 -0700
 
 blueox (0.5.1)
 
