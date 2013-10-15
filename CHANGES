@@ -1,3 +1,10 @@
+blueox (0.5.2)
+
+  * Support for Celery
+  * Fix for bad clients crashing oxd
+
+-- Rhett Garber <rhettg@gmail.com>  Mon, 14 Oct 2013 17:22:00 -0700
+
 blueox (0.5.1)
 
   * Packaging issue
