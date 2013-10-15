@@ -6,7 +6,7 @@ import sys
 import glob
 from distutils.core import setup
 
-PACKAGES = ['blueox']
+PACKAGES = ['blueox', 'blueox.contrib', 'blueox.contrib.django']
 
 def get_init_val(val, packages=PACKAGES):
     pkg_init = "%s/__init__.py" % PACKAGES[0]
@@ -18,7 +18,7 @@ def get_init_val(val, packages=PACKAGES):
 
 
 setup(
-    name='py-%s' % get_init_val('title'),
+    name='%s' % get_init_val('title'),
     version=get_init_val('version'),
     description=get_init_val('description'),
     long_description=open('README').read(),
