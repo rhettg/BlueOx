@@ -4,14 +4,13 @@ Importing this module will register signal handlers into Celery worker's runtime
 
 We also will track creation of tasks on the client side.
 """
-import functools
 import logging
 import traceback
 
 import blueox
 from blueox.context import current_context
-import celery.task
-from celery import states, signals
+from celery import states
+from celery import signals
 from django.conf import settings
 
 # If dealer is installed, use it to get our revision
@@ -21,13 +20,13 @@ try:
 except ImportError:
     revision = None
 
-logger = logging.getLogger('postmates.celery_task')
-
 @signals.task_sent.connect
 def on_task_sent(**kwargs):
     with blueox.Context('.celery.task_sent'):
-        blueox.set('task_id', kwargs['task_id'])
-        blueox.set('task', kwargs['task'].name)
+        # Arguments for this signal are different than the worker signals. Sometimes
+        # they are even different than what the documentation says.
+        blueox.set('task_id', kwargs.get('task_id', kwargs['id']))
+        blueox.set('task', str(kwargs['task']))
         blueox.set('eta', kwargs['eta'])
 
 
@@ -39,7 +38,7 @@ def on_worker_process_init(**kwargs):
 
     handler = blueox.LogHandler()
     handler.setLevel(logging.INFO)
-    logging.getLogger('postmates').addHandler(handler)
+    logging.getLogger('').addHandler(handler)
 
 
 @signals.worker_shutdown.connect
