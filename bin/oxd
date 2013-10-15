@@ -214,7 +214,13 @@ def main():
         log_files = dict((name, stream) for name, stream in log_files.iteritems() if stream.poll())
 
         if collector_sock in ready:
-            event_meta, event_data = collector_sock.recv_multipart()
+            try:
+                event_meta, event_data = collector_sock.recv_multipart()
+            except ValueError, e:
+                # Sometimes clients can fail and corrupt these two-part sends.
+                log.warning("Failed to recv from %r: %r", collector_sock, e)
+                continue
+
             try:
                 network.check_meta_version(event_meta)
             except ValueError:
