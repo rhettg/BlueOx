@@ -207,6 +207,14 @@ You can also connect to `oxd` and get a live streaming of log data:
 Note the use of '*' to indicate a prefix query for the type filter. This will
 return all events with a type that begins with 'request'
 
+### Dealing with Failure
+
+When an `oxd` instance becomes unavailable, clients will spool messages in
+memory up to some internal limit. After hitting this limit, exceptions will be
+logged.
+
+For an `oxd` forwarding to another `oxd`, the only limit is how much memory the process can allocate.
+
 ### A Note About Ports
 
 There are several types of network ports in use with BlueOx:

@@ -38,6 +38,9 @@ FILE_POLL_INTERVAL = 1.0
 # How long before we close an open idle file
 FILE_IDLE_TIMEOUT = 60.0
 
+# If we're asked to shutdown before forwarding everything, we'll wait this long.
+LINGER_SHUTDOWN_MSECS = 5000
+
 log = logging.getLogger("blueox.d")
 
 def setup_logging(options):
@@ -186,8 +189,12 @@ def main():
     if options.forward:
         log.info("Inializing forwarding socket to %s", options.forward)
         forward_sock = zmq_context.socket(zmq.PUSH)
+        forward_sock.linger = LINGER_SHUTDOWN_MSECS
+        # Note we are not setting a HWM for our forwarder, this means we'll
+        # just collect and store all messages in memory until our forwarder
+        # becomes available. The SWAP option which would temporarily store on
+        # disk was removed in zmq 3
         forward_sock.connect("tcp://%s" % options.forward)
-        forward_sock.hwm = 1000
 
     stats = {'last': None, 'lag': None, 'events': {}, 'hosts': {}}
     log_files = {}

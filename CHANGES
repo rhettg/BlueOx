@@ -1,3 +1,9 @@
+blueox (0.5.3)
+
+  * zmq socket changes for better behavior during oxd failures.
+
+-- Rhett Garber <rhettg@gmail.com>  Thr, 17 Oct 2013 13:15:00 -0700
+
 blueox (0.5.2)
 
   * Support for Celery

@@ -19,6 +19,15 @@ import msgpack
 
 log = logging.getLogger(__name__)
 
+# We want to limit how many messages we'll hold in memory so if our oxd is
+# unavailable, we don't just run out of memory.  I based this value on rough
+# value of rather large 3k sized messages, and how many we can fit in 10 megs.
+MAX_QUEUED_MESSAGES = 3500
+
+# If we have pending outgoing messages, this is how long we'll wait after
+# being told to exit.
+LINGER_SHUTDOWN_MSECS = 2000
+
 META_STRUCT_FMT = "!Bd64p64p"
 
 # We're going to include a version byte in our meta struct for future
@@ -47,14 +56,17 @@ def init(host, port):
 def _thread_connect():
     if _zmq_context and not getattr(threadLocal, 'zmq_socket', None):
         threadLocal.zmq_socket = _zmq_context.socket(zmq.PUSH)
+        threadLocal.zmq_socket.hwm = MAX_QUEUED_MESSAGES
+        threadLocal.zmq_socket.linger = LINGER_SHUTDOWN_MSECS
+
         threadLocal.zmq_socket.connect(_connect_str)
-        threadLocal.zmq_socket.hwm = 100
 
 def send(context):
     global _zmq_context
     _thread_connect()
     if threadLocal.zmq_socket is not None:
         try:
+            log.info("Sending msg")
             # Our sending format is made up of two messages. The first has a
             # quick to unpack set of meta data that our collector is going to
             # use for routing and stats. This is much faster than having the
@@ -65,8 +77,7 @@ def send(context):
             assert len(context_dict['type']) < 64
             meta_data = struct.pack(META_STRUCT_FMT, META_STRUCT_VERSION, context_dict['end'], context_dict['host'], context_dict['type'])
 
-            threadLocal.zmq_socket.send(meta_data, zmq.NOBLOCK|zmq.SNDMORE)
-            threadLocal.zmq_socket.send(msgpack.packb(context_dict), zmq.NOBLOCK)
+            threadLocal.zmq_socket.send_multipart((meta_data, msgpack.packb(context_dict)), zmq.NOBLOCK)
         except zmq.ZMQError, e:
             log.exception("Failed sending blueox event, buffer full?")
     else:
