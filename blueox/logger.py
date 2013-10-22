@@ -28,6 +28,10 @@ class LogHandler(logging.Handler):
         self.name = name
 
     def emit(self, record):
+        # We don't want any endless recursion
+        if record.name.startswith('blueox'):
+            return
+
         with Context(self.name or '.log') as c:
             c.set('name', record.name)
             c.set('level', record.levelname)

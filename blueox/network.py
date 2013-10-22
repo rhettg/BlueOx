@@ -66,7 +66,7 @@ def send(context):
     _thread_connect()
     if threadLocal.zmq_socket is not None:
         try:
-            log.info("Sending msg")
+            log.debug("Sending msg")
             # Our sending format is made up of two messages. The first has a
             # quick to unpack set of meta data that our collector is going to
             # use for routing and stats. This is much faster than having the

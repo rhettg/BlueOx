@@ -1,3 +1,9 @@
+blueox (0.5.4)
+
+  * Fix issue with logger that could result in some bad recursion.
+
+-- Rhett Garber <rhettg@gmail.com>  Mon, 21 Oct 2013 22:57:00 -0700
+
 blueox (0.5.3)
 
   * zmq socket changes for better behavior during oxd failures.
