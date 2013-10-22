@@ -48,16 +48,18 @@ class Middleware:
         if not hasattr(request, 'blueox'):
             return
 
-        blueox.set('response_status_code', response.status_code)
+        # Other middleware may have blocked our response.
+        if response is not None:
+            blueox.set('response_status_code', response.status_code)
 
-        if not response.streaming:
-            blueox.set('response_size', len(response.content))
+            if not response.streaming:
+                blueox.set('response_size', len(response.content))
 
-        headers = {}
-        for k, v in response.items():
-            headers[k] = v
+            headers = {}
+            for k, v in response.items():
+                headers[k] = v
 
-        blueox.set('response_headers', headers)
+            blueox.set('response_headers', headers)
 
         request.blueox.done()
 
