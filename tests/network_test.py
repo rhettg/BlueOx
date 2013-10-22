@@ -1,5 +1,6 @@
 import random
 import struct
+import decimal
 
 from testify import *
 import zmq
@@ -59,5 +60,27 @@ class NetworkSendTestCase(TestCase):
         assert_equal(data['id'], 1)
         assert_equal(data['type'], 'test')
         assert_equal(utils.get_deep(data['body'], "bar.baz"), 10.0)
+
+
+class SerializeContextTestCase(TestCase):
+    @setup
+    def build_context(self):
+        self.context = context.Context('test', 1)
+
+    def test_decimal(self):
+        with self.context:
+            self.context.set('value', decimal.Decimal("6.66"))
+        meta_data, context_data = network._serialize_context(self.context)
+        data = msgpack.unpackb(context_data)
+        assert_equal(data['body']['value'], "6.66")
+
+    def test_decimal(self):
+        with self.context:
+            self.context.set('value', Exception('hello'))
+
+        meta_data, context_data = network._serialize_context(self.context)
+        data = msgpack.unpackb(context_data)
+        assert_equal(data['body'], None)
+
 
 

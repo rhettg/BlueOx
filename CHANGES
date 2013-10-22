@@ -1,3 +1,10 @@
+blueox (0.5.5)
+
+  * Handle serializing python decimal and other more resiliancy around
+    serializing contexts.
+
+-- Rhett Garber <rhettg@gmail.com>  Tue, 22 Oct 2013 11:11:00 -0700
+
 blueox (0.5.4)
 
   * Fix issue with logger that could result in some bad recursion.

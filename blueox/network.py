@@ -17,6 +17,8 @@ import struct
 import zmq
 import msgpack
 
+from . import utils
+
 log = logging.getLogger(__name__)
 
 # We want to limit how many messages we'll hold in memory so if our oxd is
@@ -61,23 +63,49 @@ def _thread_connect():
 
         threadLocal.zmq_socket.connect(_connect_str)
 
+def _serialize_context(context):
+    # Our sending format is made up of two messages. The first has a
+    # quick to unpack set of meta data that our collector is going to
+    # use for routing and stats. This is much faster than having the
+    # collector decode the whole event. We're just going to use python
+    # struct module to make a quick and dirty data structure
+    context_dict = context.to_dict()
+    for key in ('host', 'type'):
+        if len(context_dict.get(key, "")) > 64:
+            raise ValueError("Value too long: %r" % key)
+
+    meta_data = struct.pack(META_STRUCT_FMT, META_STRUCT_VERSION, context_dict['end'], context_dict['host'], context_dict['type'])
+
+    try:
+        context_data = msgpack.packb(context_dict)
+    except TypeError:
+        try:
+            # If we fail to serialize our context, we can try again with an
+            # enhanced packer (it's slower though)
+            context_data = msgpack.packb(context_dict, default=utils.msgpack_encode_default)
+        except TypeError:
+            log.exception("Serialization failure (not fatal, dropping data)")
+
+            # One last try after dropping the body
+            context_dict['body'] = None
+            context_data = msgpack.packb(context_dict)
+
+    return meta_data, context_data
+
 def send(context):
     global _zmq_context
     _thread_connect()
+
+    try:
+        meta_data, context_data = _serialize_context(context)
+    except Exception:
+        log.exception("Failed to serialize context")
+        return
+
     if threadLocal.zmq_socket is not None:
         try:
             log.debug("Sending msg")
-            # Our sending format is made up of two messages. The first has a
-            # quick to unpack set of meta data that our collector is going to
-            # use for routing and stats. This is much faster than having the
-            # collector decode the whole event. We're just going to use python
-            # struct module to make a quick and dirty data structure
-            context_dict = context.to_dict()
-            assert len(context_dict['host']) < 64
-            assert len(context_dict['type']) < 64
-            meta_data = struct.pack(META_STRUCT_FMT, META_STRUCT_VERSION, context_dict['end'], context_dict['host'], context_dict['type'])
-
-            threadLocal.zmq_socket.send_multipart((meta_data, msgpack.packb(context_dict)), zmq.NOBLOCK)
+            threadLocal.zmq_socket.send_multipart((meta_data, context_data), zmq.NOBLOCK)
         except zmq.ZMQError, e:
             log.exception("Failed sending blueox event, buffer full?")
     else:

@@ -10,6 +10,7 @@ This module provides utility functions that are used within BlueOx
 :license: ISC, see LICENSE for more details.
 
 """
+import decimal
 
 class ParsedKey(object):
     def __init__(self, value):
@@ -62,3 +63,15 @@ def set_deep(target, key, value):
         iter_value = iter_value.setdefault(elem, {})
 
     iter_value[p_key[-1]] = value
+
+def msgpack_encode_default(obj):
+    """Extra encodings for python types into msgpack
+
+    These are attempted if our normal serialization fails.
+    """
+    if isinstance(obj, decimal.Decimal):
+        return str(obj)
+
+    raise TypeError("Unknown type: %r" % (obj,))
+
+
