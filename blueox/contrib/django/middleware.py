@@ -14,7 +14,7 @@ class Middleware:
 
         handler = blueox.LogHandler()
         handler.setLevel(logging.INFO)
-        logging.getLogger('postmates').addHandler(handler)
+        logging.getLogger('').addHandler(handler)
 
     def process_request(self, request):
         request.blueox = blueox.Context(".".join((getattr(settings, 'BLUEOX_NAME', ''), 'request')))
@@ -29,7 +29,6 @@ class Middleware:
                 headers[k] = v
         blueox.set('headers', headers)
 
-        blueox.set('cookies', request.COOKIES)
         blueox.set('uri', request.build_absolute_uri())
         blueox.set('client_ip', request.META['REMOTE_ADDR'])
 

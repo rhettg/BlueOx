@@ -3,6 +3,8 @@ blueox (0.5.5)
   * Handle serializing python decimal and other more resiliancy around
     serializing contexts.
   * Django middleware handles 'None' response values.
+  * Remove extra cookies value in django middleware. It can be parsed out of
+    headers.
 
 -- Rhett Garber <rhettg@gmail.com>  Tue, 22 Oct 2013 11:11:00 -0700
 
