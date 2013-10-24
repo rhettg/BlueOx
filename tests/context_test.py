@@ -68,3 +68,26 @@ class ParentSampleTestCase(TestCase):
                 assert all(sub_enabled) or not any(sub_enabled)
 
         assert 400 > sum(enabled) > 150
+
+
+class ContextWrapTestCase(TestCase):
+    @setup
+    def build_function(self):
+        @blueox.context_wrap('foo')
+        def my_function(value):
+            blueox.set('value', value)
+            self.context = context.current_context()
+            return True
+
+        self.function = my_function
+
+    def test(self):
+        assert_equal(self.function('test'), True)
+
+        assert self.context
+        assert not self.context.writable
+        assert_equal(self.context.to_dict()['body']['value'], 'test')
+
+
+
+

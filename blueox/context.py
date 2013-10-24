@@ -16,6 +16,7 @@ import os
 import random
 import struct
 import threading
+import functools
 
 from . import utils
 from . import network
@@ -203,3 +204,16 @@ def add(*args, **kwargs):
     context = current_context()
     if context:
         context.add(*args, **kwargs)
+
+def context_wrap(type_name, sample=None):
+    """Decorator for wrapping a function call with a context"""
+
+    def wrapper(func):
+        @functools.wraps(func)
+        def inner(*args, **kwargs):
+            with Context(type_name, sample=sample):
+                return func(*args, **kwargs)
+
+        return inner
+
+    return wrapper

@@ -22,7 +22,7 @@ import logging
 
 from . import utils
 from . import network
-from .context import Context, set, append, add
+from .context import Context, set, append, add, context_wrap
 from . import context as _context_mod
 from .errors import Error
 from .logger import LogHandler

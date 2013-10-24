@@ -1,6 +1,7 @@
 blueox (0.5.6)
 
-  * Fix bug in Django middleware where blocked requests caused response error.
+  * Fixed bug in Django middleware where blocked requests caused response error.
+  * Added new decorator wrapping a function in a context.
 
 -- Rhett Garber <rhettg@gmail.com>  Thu, 24 Oct 2013 11:42:00 -0700
 
