@@ -1,3 +1,9 @@
+blueox (0.5.6)
+
+  * Fix bug in Django middleware where blocked requests caused response error.
+
+-- Rhett Garber <rhettg@gmail.com>  Thu, 24 Oct 2013 11:42:00 -0700
+
 blueox (0.5.5)
 
   * Handle serializing python decimal and other more resiliancy around

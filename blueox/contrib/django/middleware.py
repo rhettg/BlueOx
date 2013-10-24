@@ -45,7 +45,7 @@ class Middleware:
     def process_response(self, request, response):
         # process_request() is not guaranteed to be called
         if not hasattr(request, 'blueox'):
-            return
+            return response
 
         # Other middleware may have blocked our response.
         if response is not None:
