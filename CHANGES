@@ -1,3 +1,10 @@
+blueox (0.5.7)
+
+  * Enhanced Django middleware to optionally include 'version' or 'revision'
+    request attributes.
+
+-- Rhett Garber <rhettg@gmail.com>  Thu, 14 Nov 2013 15:53:00 -0800
+
 blueox (0.5.6)
 
   * Fixed bug in Django middleware where blocked requests caused response error.

@@ -32,10 +32,9 @@ class Middleware:
         blueox.set('uri', request.build_absolute_uri())
         blueox.set('client_ip', request.META['REMOTE_ADDR'])
 
-        try:
-            blueox.set('version', request.revision)
-        except AttributeError:
-            pass
+        for key in ('version', 'revision'):
+            if hasattr(request, key):
+                blueox.set(key, getattr(request, key))
 
         if request.user:
             blueox.set('user', request.user.id)
