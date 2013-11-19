@@ -1,3 +1,9 @@
+blueox (0.5.8)
+
+  * Fix oxview issue where multiple lines would be printed if JSON was enabled. (wonga00)
+
+-- Rhett Garber <rhettg@gmail.com>  Tue, 19 Nov 2013 10:49:00 -0800
+
 blueox (0.5.7)
 
   * Enhanced Django middleware to optionally include 'version' or 'revision'
