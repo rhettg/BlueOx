@@ -74,7 +74,7 @@ def main():
                 print json.dumps(line, sort_keys=True, indent=4, separators=(',', ': '))
             else:
                 print json.dumps(line)
-        if options.pretty:
+        elif options.pretty:
             print_pretty_header(line)
             pprint.pprint(line['body'])
         else:
