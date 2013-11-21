@@ -10,6 +10,7 @@ This module provides utility functions that are used within BlueOx
 :license: ISC, see LICENSE for more details.
 
 """
+import datetime
 import decimal
 
 class ParsedKey(object):
@@ -71,6 +72,8 @@ def msgpack_encode_default(obj):
     """
     if isinstance(obj, decimal.Decimal):
         return str(obj)
+    if isinstance(obj, datetime.datetime):
+        return obj.isoformat()
 
     raise TypeError("Unknown type: %r" % (obj,))
 
