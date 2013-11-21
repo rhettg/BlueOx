@@ -20,14 +20,25 @@ try:
 except ImportError:
     revision = None
 
-@signals.task_sent.connect
-def on_task_sent(**kwargs):
-    with blueox.Context('.celery.task_sent'):
-        # Arguments for this signal are different than the worker signals. Sometimes
-        # they are even different than what the documentation says.
-        blueox.set('task_id', kwargs.get('task_id', kwargs['id']))
-        blueox.set('task', str(kwargs['task']))
-        blueox.set('eta', kwargs['eta'])
+
+if hasattr(signals, 'after_task_publish'):
+    @signals.after_task_publish.connect
+    def on_task_sent(sender=None, body=None, **kwargs):
+        with blueox.Context('.celery.task_sent'):
+            blueox.set('task_id', body['id'])
+            blueox.set('task', str(body['task']))
+            blueox.set('eta', body['eta'])
+
+else:
+    @signals.task_sent.connect
+    def on_task_sent(**kwargs):
+        with blueox.Context('.celery.task_sent'):
+            # Arguments for this signal are different than the worker signals. Sometimes
+            # they are even different than what the documentation says. See also
+            # https://github.com/celery/celery/issues/1606
+            blueox.set('task_id', kwargs.get('task_id', kwargs.get('id')))
+            blueox.set('task', str(kwargs['task']))
+            blueox.set('eta', kwargs['eta'])
 
 
 @signals.worker_process_init.connect
