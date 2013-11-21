@@ -1,3 +1,10 @@
+blueox (0.5.9)
+
+  * Update contrib support for celery 3.1.4
+  * Add datetime serialization to msg pack encoder
+
+-- Rhett Garber <rhettg@gmail.com>  Thu, 21 Nov 2013 15:08:00 -0800
+
 blueox (0.5.8)
 
   * Fix oxview issue where multiple lines would be printed if JSON was enabled. (wonga00)
