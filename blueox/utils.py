@@ -12,6 +12,8 @@ This module provides utility functions that are used within BlueOx
 """
 import datetime
 import decimal
+import time
+
 
 class ParsedKey(object):
     def __init__(self, value):
@@ -73,7 +75,7 @@ def msgpack_encode_default(obj):
     if isinstance(obj, decimal.Decimal):
         return str(obj)
     if isinstance(obj, datetime.datetime):
-        return obj.isoformat()
+        return time.mktime(obj.utctimetuple()
 
     raise TypeError("Unknown type: %r" % (obj,))
 
