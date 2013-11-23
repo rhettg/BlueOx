@@ -1,3 +1,9 @@
+blueox (0.5.10)
+
+  * Bad distribution
+
+-- Rhett Garber <rhettg@gmail.com>  Fri, 22 Nov 2013 18:47:00 -0800
+
 blueox (0.5.9)
 
   * Update contrib support for celery 3.1.4

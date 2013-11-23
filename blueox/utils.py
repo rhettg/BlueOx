@@ -75,7 +75,7 @@ def msgpack_encode_default(obj):
     if isinstance(obj, decimal.Decimal):
         return str(obj)
     if isinstance(obj, datetime.datetime):
-        return time.mktime(obj.utctimetuple()
+        return time.mktime(obj.utctimetuple())
 
     raise TypeError("Unknown type: %r" % (obj,))
 
