@@ -171,6 +171,25 @@ BlueOx also detects use of 'Dealer' middleware which adds a `revision` key to
 your request indicating the SCM version of your application. This will be
 included as a `version`.
 
+### Systems Integration
+
+If all your application logs are collected via BlueOx, you might be tempted to
+want the same for other system level log files. Use the `oxingest` command to use
+BlueOx's transport for any general line based input.
+
+For example, in a shell script:
+
+    echo "I'm all done" | oxingest notices
+
+If you want to monitor existing log files:
+
+    oxingest -F /var/log/syslog -F /var/log/mail.err
+
+Type names will be inferred by the filenames provided, but that often isn't good enough. Try:
+
+    oxingest -F nginx_access:/var/log/nginx/access.log -F nginx_error:/var/log/nginx/error.log
+
+
 Event Collection
 -----------------
 

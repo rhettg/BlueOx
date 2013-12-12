@@ -1,3 +1,9 @@
+blueox (0.6.0)
+
+  * Introduce new utility, oxingest
+
+-- Rhett Garber <rhettg@gmail.com>  Mon, 2 Dec 2013 18:04:00 -0800
+
 blueox (0.5.10)
 
   * Bad distribution

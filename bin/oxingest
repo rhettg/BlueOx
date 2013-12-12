@@ -1,0 +1,136 @@
+#!/bin/python
+import argparse
+import sys
+import fcntl
+import os
+import time
+import select
+import subprocess
+import errno
+
+import blueox
+
+
+def read_and_log(name, fp):
+    while True:
+        try:
+            line = fp.readline()
+        except (OSError, IOError), e:
+            if e.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
+                break
+            else:
+                raise
+        else:
+            data = line.strip()
+            if data:
+                with blueox.Context(name):
+                    blueox.set('data', data)
+            else:
+                break
+
+
+def check_exits(watch_list):
+    for name, process in watch_list:
+        process.poll()
+
+        if process.returncode is not None:
+            return name, process
+
+    return None
+
+
+def open_watcher(file_def, type_name=None):
+    if ':' in file_def:
+        name, file_path = file_def.split(':')
+    else:
+        name = type_name or "oxingest.".format(os.path.basename(file_def).split('.')[0])
+        file_path = file_def
+
+    if not os.path.exists(file_path):
+        raise Exception("File not found")
+
+    p = subprocess.Popen("tail -n 0 -F {}".format(file_path), shell=True, stdout=subprocess.PIPE)
+
+    # Set non-blocking, just in case our select loop lies to us.
+    fl = fcntl.fcntl(p.stdout, fcntl.F_GETFL)
+    fcntl.fcntl(p.stdout, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+
+    return name, p
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('type_name', action='store', nargs="?", help="Type name to use for events")
+    parser.add_argument('--host', '-H', dest='host', action='store', default="127.0.0.1:3514")
+    parser.add_argument('--file', '-F', dest='files', action='append', help="Log file to tail for input")
+
+    args = parser.parse_args()
+
+    if args.type_name and args.files:
+        parser.error("If using -F, provide type name inline per documentation")
+
+    host, port = args.host.split(':')
+    blueox.configure(host, int(port))
+
+    if args.files:
+        watch = []
+        for f in args.files:
+            watch.append(open_watcher(f, args.type_name))
+
+        watch_fds = dict((p.stdout.fileno(), (n, p)) for (n, p) in watch)
+
+        done = False
+        while not done:
+            watch_list = [p.stdout for _, p in watch]
+            try:
+                r_fps, _, err_fps = select.select(watch_list, [], watch_list, 1)
+            except (KeyboardInterrupt, SystemExit):
+                done = True
+                break
+
+            if err_fps:
+                print >>sys.stderr, "Error on select"
+                done = True
+                break
+
+            if r_fps:
+                for fp in r_fps:
+                    name, process = watch_fds[fp.fileno()]
+                    read_and_log(name, fp)
+
+            exit = check_exits(watch)
+            if exit:
+                name, process = exit
+                print >>sys.stderr, "Watch for {}: exited {}".format(name, process.returncode)
+                done = True
+
+        print "Terminating..."
+
+        death_list = {}
+        for name, process in watch:
+            if process.returncode is None:
+                process.kill()
+
+            death_list[name] = process
+
+        while death_list:
+            exit = check_exits(death_list.items())
+            if exit:
+                name, _ = exit
+                del death_list[name]
+
+            time.sleep(1)
+
+        print "Done"
+
+    else:
+        for line in sys.stdin:
+            with blueox.Context(args.type_name):
+                blueox.set('data', line.strip())
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (KeyboardInterrupt, SystemExit):
+        raise
