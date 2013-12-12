@@ -1,6 +1,7 @@
 blueox (0.6.0)
 
   * Introduce new utility, oxingest
+  * Add support for datetime.date serialization
 
 -- Rhett Garber <rhettg@gmail.com>  Mon, 2 Dec 2013 18:04:00 -0800
 

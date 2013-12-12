@@ -1,6 +1,7 @@
 import random
 import struct
 import decimal
+import datetime
 
 from testify import *
 import zmq
@@ -67,19 +68,29 @@ class SerializeContextTestCase(TestCase):
     def build_context(self):
         self.context = context.Context('test', 1)
 
-    def test_decimal(self):
+    def test_types(self):
         with self.context:
-            self.context.set('value', decimal.Decimal("6.66"))
+            self.context.set('decimal_value', decimal.Decimal("6.66"))
+            self.context.set('date_value', datetime.date(2013, 12, 10))
+            self.context.set('datetime_value', datetime.datetime(2013, 12, 10, 12, 12, 12))
+
         meta_data, context_data = network._serialize_context(self.context)
         data = msgpack.unpackb(context_data)
-        assert_equal(data['body']['value'], "6.66")
+        assert_equal(data['body']['decimal_value'], "6.66")
+        assert_equal(data['body']['date_value'], "2013-12-10")
+        assert_equal(
+            datetime.datetime.fromtimestamp(float(data['body']['datetime_value'])),
+            datetime.datetime(2013, 12, 10, 12, 12, 12))
 
-    def test_decimal(self):
+    def test_exception(self):
         with self.context:
             self.context.set('value', Exception('hello'))
 
         meta_data, context_data = network._serialize_context(self.context)
         data = msgpack.unpackb(context_data)
+
+        # The serialization should fail, but that just means we don't have any
+        # data.
         assert_equal(data['body'], None)
 
 
