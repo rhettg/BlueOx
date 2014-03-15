@@ -144,7 +144,7 @@ BlueOx provides middleware that can be plugged in to any Django application.
 
     MIDDLEWARE_CLASSES.append('blueox.contrib.django.middleware.Middleware')
 
-Default settings should work fine, but BlueOx can be customzized by setting
+Default settings should work fine, but BlueOx can be customized by setting
 something like the following:
 
     BLUEOX_HOST=127.0.0.1
@@ -155,15 +155,32 @@ The `request` keys are someone similiar between Tornado integration and Django,
 except that it's assumed Django is running under WSGI, where certain items like
 headers are not given raw.
 
+It's recommmended that you also include BlueOx as a logging handler. You should
+do something like:
+
+    LOGGING {
+        'handlers':
+           ...
+           'blueox': {
+               'level': 'INFO',
+               'class': 'blueox.LogHandler',
+           },
+           ...
+        'loggers':
+          '': {
+              'handlers': ['blueox', ..],
+          },
+    }
+
 BlueOx also detects use of 'Dealer' middleware which adds a `revision` key to
 your request indicating the SCM version of your application. This will be
 included as a `version`.
 
 ### Systems Integration
 
-If all your application logs are collected via BlueOx, you might be tempted to
-want the same for other system level log files. Use the `oxingest` command to use
-BlueOx's transport for any general line based input.
+If all your application logs are collected via BlueOx, you might want to use
+the same for other system level log files. The `oxingest` command allows you
+use BlueOx's transport for any general line based input.
 
 For example, in a shell script:
 

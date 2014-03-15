@@ -12,10 +12,6 @@ class Middleware:
         port = getattr(settings, 'BLUEOX_PORT', 3514)
         blueox.configure(host, port)
 
-        handler = blueox.LogHandler()
-        handler.setLevel(logging.INFO)
-        logging.getLogger('').addHandler(handler)
-
     def process_request(self, request):
         request.blueox = blueox.Context(".".join((getattr(settings, 'BLUEOX_NAME', ''), 'request')))
         request.blueox.start()

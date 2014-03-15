@@ -1,6 +1,7 @@
 blueox (0.7.0)
 
   * Rewrite of tornado_utils to support tornado > 3.0
+  * Leave logging configuration in Django to normal LOGGING settings.
 
 -- Rhett Garber <rhettg@gmail.com>  Mon, 14 Mar 2014 17:36:00 -0700
 
