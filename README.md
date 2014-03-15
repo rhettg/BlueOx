@@ -120,35 +120,23 @@ particularly challenging since one of the goals for BlueOx is to, like the
 logging module, have globally accessible contexts so you don't have to pass
 anything around to have access to all the heirarchical goodness.
 
-Since you'll likely want to have a context per web request, it's difficult o
-work around tornado's async machinery to make that work well.
-Fear not, batteries included: `blueox.tornado_utils`
+Since you'll likely want to have a context per web request, special care must
+be taken to work around tornado's async machinery.  Fear not, batteries
+included: `blueox.tornado_utils`
 
 The most straightfoward way to integrate BlueOx into a tornado application requires two things:
 
-  1. Allow BlueOx to monkey patch async tooling (tornado.gen primarily)
+  1. Include `blueox.tornado_utils.BlueOxRequestHandlerMixin` to create a context for each request
   1. Use or re-implement the provided base request handler `blueox.tornado_utils.SampleRequestHandler`
-
-To install the monkey patching, add the line:
-
-    blueox.tornado_utils.install()
-
-This must be executed BEFORE any of your RequestHandlers are imported.
-
-This is required if you are using `@web.asynchronous` and `@gen.engine`. If you are
-manually managing callbacks (which you probably shouldn't be), you'll need
-manually recall the BlueOx context with `self.blueox.start()`
+     This puts helpful data into your context, like URI, method and the like.
+  1. If using coroutines, (tornado.gen) you'll need to use
+     `blueox.tornado_utils.coroutine` which is wrapper that supports context
+     switching.
 
 If you are using the `autoreload` module for tornado, you should also add a
 call to `shutdown()` as a reload hook to avoid leaking file descriptors.
 
 See `tests/tornado_app.py` for an example of all this.
-
-If you have your own base request handlers you'll likely want to reimplement
-based on the one provided rather than trying to use inheritance. This will also
-make it really clear what you are including in your top-level event and allow
-you to name it whatever you want.
-
 
 ### Django Integration
 

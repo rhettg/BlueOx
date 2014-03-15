@@ -27,83 +27,81 @@ import tornado.stack_context
 
 import blueox
 
-def install():
-    """Install blueox hooks by poking into the tornado innards
 
-    THIS MUST BE DONE BEFORE IMPORTING APPLICATION REQUEST HANDLERS
-    We have to replace some decorators before they are used to create your class
-
-    This is pretty hacky and may make you feel uncomfortable. It's only here so
-    that blueox can be used with the minimal amount of extra boilerplate.  Your
-    always free to be more explicit depending on your needs.
-
-    Up to you if you want to hide your uglyiness in here or have it spread
-    throughout your application.
-    
+def _gen_wrapper(ctx, generator):
+    """Generator Wrapper that starts/stops our context
     """
-    tornado.gen.engine = gen_engine
-    tornado.gen.Runner = BlueOxRunner
+    while True:
+        ctx.start()
 
-
-# Our hook into the request cycle is going to be provided by wrapping the
-# _execute() method.  This creates our blueox context, starts it, and then stops
-# it at the end. We'll leave it up to the finish() method to close us out.
-def wrap_execute(type_name):
-    def decorate(func):
-        @functools.wraps(func)
-        def wrapper(self, *args, **kwargs):
-            self.blueox = blueox.Context(type_name)
-            self.blueox.start()
-            try:
-                return func(self, *args, **kwargs)
-            finally:
-                # We're done executing in this context for the time being. Either we've already
-                # finished handling our blueox context, or we'll allow a later finish() call to 
-                # mark it done.
-                self.blueox.stop()
-
-        return wrapper
-
-    return decorate
-
-def wrap_exception(func):
-    @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
-        self.blueox.start()
         try:
-            return func(self, *args, **kwargs)
-        finally:
-            self.blueox.stop()
+            v = generator.next()
+        except (tornado.gen.Return, StopIteration):
+            ctx.done()
+            raise
+        else:
+            ctx.stop()
+            yield v
 
-    return wrapper
 
-def wrap_finish(func):
+def coroutine(func):
+    """Replacement for tornado.gen.coroutine that manages a blueox context
+
+    The difficulty with managing global blueox contexts in an async environment
+    is contexts will need to start and stop depending on what steps of a
+    coroutine are running. This decorator wraps the default coroutine decorator
+    allowing us to stop and restore the context whenever this coroutine runs.
+
+    If you don't use this wrapper, unrelated contexts may be grouped together!
+    """
     @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
+    def wrapper(*args, **kwargs):
         try:
-            return func(self, *args, **kwargs)
-        finally:
-            self.blueox.done()
+            ctx = args[0].blueox_ctx
+        except (AttributeError, IndexError):
+            ctx = None
 
-    return wrapper
+        # Remember, not every coroutine wrapped method will return a generator,
+        # so we have to manage context switching in multiple places.
+        if ctx is not None:
+            ctx.start()
 
-class SampleRequestHandler(tornado.web.RequestHandler):
-    """Sample base request handler necessary for providing smart blueox contexts through a web request.
+        result = func(*args, **kwargs)
 
-    We need to wrap two methods: _execute() and finish()
+        if ctx is not None:
+            ctx.stop()
 
-    To specify a name for your top level event, pass it the wrap_execute() decorator.
+        if isinstance(result, types.GeneratorType):
+            return _gen_wrapper(ctx, result)
 
-    The idea is that when _execute is called, we'll generate a blueox Context
-    with the name specified. This should cover any methods like get() or
-    post(). When _execute returns, we'll be in either one of two states. Either
-    finish() has been called and we are all done, or finish() will be called
-    later due to some async complexity. 
+        return result
 
-    Optionally, we also provide redefined methods that add critical data about
-    the request to the active blueox context.
+    real_coroutine = tornado.gen.coroutine
+    return real_coroutine(wrapper)
+
+
+class BlueOxRequestHandlerMixin(object):
+    """Include in a RequestHandler to get a blueox context for each request
+
+    """
+    blueox_name = "request"
+
+    def prepare(self):
+        self.blueox_ctx = blueox.Context(self.blueox_name)
+        self.blueox_ctx.start()
+        super(BlueOxRequestHandlerMixin, self).prepare()
+
+    def on_finish(self):
+        super(BlueOxRequestHandlerMixin, self).on_finish()
+        self.blueox_ctx.done()
+        self.blueox_ctx = None
+
+
+class SampleRequestHandler(BlueOxRequestHandlerMixin, tornado.web.RequestHandler):
+    """Sample base request handler that provides basic information about the request.
     """
     def prepare(self):
+        super(SampleRequestHandler, self).prepare()
         blueox.set('headers', self.request.headers)
         blueox.set('method', self.request.method)
         blueox.set('uri', self.request.uri)
@@ -111,76 +109,24 @@ class SampleRequestHandler(tornado.web.RequestHandler):
     def write_error(self, status_code, **kwargs):
         if 'exc_info' in kwargs:
             blueox.set('exception', ''.join(traceback.format_exception(*kwargs["exc_info"])))
-    
+
         return super(SampleRequestHandler, self).write_error(status_code, **kwargs)
 
     def write(self, chunk):
         blueox.add('response_size', len(chunk))
         return super(SampleRequestHandler, self).write(chunk)
 
-    def finish(self, *args, **kwargs):
-        res = super(SampleRequestHandler, self).finish(*args, **kwargs)
+    def on_finish(self):
         blueox.set('response_status_code', self._status_code)
-        return res
+        super(SampleRequestHandler, self).on_finish()
 
-    _execute = wrap_execute('request')(tornado.web.RequestHandler._execute)
-    finish = wrap_finish(finish)
-    _stack_context_handle_exception = wrap_exception(tornado.web.RequestHandler._stack_context_handle_exception)
-
-
-# We need a custom version of this decorator so that we can pass in our blueox
-# context to the Runner
-def gen_engine(func):
-    """Hacked up copy of tornado.gen.engine decorator
-    """
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        runner = None
-
-        def handle_exception(typ, value, tb):
-            # if the function throws an exception before its first "yield"
-            # (or is not a generator at all), the Runner won't exist yet.
-            # However, in that case we haven't reached anything asynchronous
-            # yet, so we can just let the exception propagate.
-            if runner is not None:
-                return runner.handle_exception(typ, value, tb)
-            return False
-
-        with tornado.stack_context.ExceptionStackContext(handle_exception) as deactivate:
-            gen = func(*args, **kwargs)
-            if isinstance(gen, types.GeneratorType):
-                blueox_ctx = getattr(args[0], 'blueox', None)
-                runner = BlueOxRunner(gen, deactivate, blueox_ctx)
-                runner.run()
-                return
-            assert gen is None, gen
-            deactivate()
-            # no yield, so we're done
-    return wrapper
-
-
-# Custom version of gen.Runner that starts and stops the blueox context
-class BlueOxRunner(tornado.gen.Runner):
-    def __init__(self, gen, deactivate_stack_context, blueox_context):
-        self.blueox_ctx = blueox_context
-        super(BlueOxRunner, self).__init__(gen, deactivate_stack_context)
-
-    def run(self):
-        try:
-            if self.blueox_ctx:
-                self.blueox_ctx.start()
-
-            return super(BlueOxRunner, self).run()
-        finally:
-            if self.blueox_ctx:
-                self.blueox_ctx.stop()
 
 class AsyncHTTPClient(tornado.simple_httpclient.SimpleAsyncHTTPClient):
     def __init__(self, *args, **kwargs):
         self.blueox_name = '.httpclient'
         return super(AsyncHTTPClient, self).__init__(*args, **kwargs)
 
-    def fetch(self, request, callback, **kwargs):
+    def fetch(self, request, callback=None, **kwargs):
         ctx = blueox.Context(self.blueox_name)
         ctx.start()
         if isinstance(request, basestring):
@@ -193,12 +139,30 @@ class AsyncHTTPClient(tornado.simple_httpclient.SimpleAsyncHTTPClient):
 
         ctx.stop()
 
-        def wrap_callback(response):
+        # I'd love to use the future to handle the completion step, BUT, we
+        # need this to happen first. If the caller has provided a callback, we don't want them
+        # to get called before we do. Rather than poke into the internal datastructures, we'll just 
+        # handle the callback explicitly
+
+        def complete_context(response):
             ctx.start()
+
             ctx.set('response.code', response.code)
             ctx.set('response.size', len(response.body) if response.body else 0)
+
             ctx.done()
-            callback(response)
 
-        return super(AsyncHTTPClient, self).fetch(request, wrap_callback, **kwargs)
+        if callback is None:
+            def fetch_complete(future):
+                complete_context(future.result())
 
+            future = super(AsyncHTTPClient, self).fetch(request, **kwargs)
+            future.add_done_callback(fetch_complete)
+        else:
+            def callback_wrapper(response):
+                complete_context(response)
+                callback(response)
+
+            future = super(AsyncHTTPClient, self).fetch(request, callback=callback_wrapper, **kwargs)
+
+        return future

@@ -1,3 +1,9 @@
+blueox (0.7.0)
+
+  * Rewrite of tornado_utils to support tornado > 3.0
+
+-- Rhett Garber <rhettg@gmail.com>  Mon, 14 Mar 2014 17:36:00 -0700
+
 blueox (0.6.0)
 
   * Introduce new utility, oxingest

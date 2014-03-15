@@ -236,10 +236,12 @@ class AsyncHTTPTestCase(AsyncTestCase):
     __test__ = False
 
     @testify.setup
-    def build_client_server(self):
-        self.__port = None
-
+    def build_client(self):
         self.http_client = AsyncHTTPClient(io_loop=self.io_loop)
+
+    @testify.setup
+    def build_server(self):
+        self.__port = None
 
         # We have a much simplified implementation of cookies for our test hook.
         # We're going to ignore pretty much everything like host, path, secure, expires etc.

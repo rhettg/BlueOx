@@ -4,8 +4,6 @@ import blueox
 import random
 import blueox.tornado_utils
 
-blueox.tornado_utils.install()
-
 import tornado.web
 import tornado.gen
 import tornado.ioloop
@@ -17,12 +15,11 @@ class MainHandler(blueox.tornado_utils.SampleRequestHandler):
         self.write("Hello, world")
 
 class AsyncHandler(blueox.tornado_utils.SampleRequestHandler):
-    @tornado.web.asynchronous
-    @tornado.gen.engine
+    @blueox.tornado_utils.coroutine
     def get(self):
         loop = tornado.ioloop.IOLoop.instance()
 
-        req_id = self.blueox.id
+        req_id = self.blueox_ctx.id
 
         called = yield tornado.gen.Task(loop.add_timeout, time.time() + random.randint(1, 5))
 
@@ -34,12 +31,11 @@ class AsyncHandler(blueox.tornado_utils.SampleRequestHandler):
 
 
 class AsyncCrashHandler(blueox.tornado_utils.SampleRequestHandler):
-    @tornado.web.asynchronous
-    @tornado.gen.engine
+    @blueox.tornado_utils.coroutine
     def get(self):
         loop = tornado.ioloop.IOLoop.instance()
 
-        req_id = self.blueox.id
+        req_id = self.blueox_ctx.id
 
         called = yield tornado.gen.Task(loop.add_timeout, time.time() + random.randint(1, 5))
 
@@ -47,19 +43,20 @@ class AsyncCrashHandler(blueox.tornado_utils.SampleRequestHandler):
 
 
 class ManualAsyncHandler(blueox.tornado_utils.SampleRequestHandler):
+    # Old School
     @tornado.web.asynchronous
     def get(self):
-        pprint.pprint(blueox.context._contexts)
         loop = tornado.ioloop.IOLoop.instance()
 
         loop.add_timeout(time.time() + random.randint(1, 5), self._complete_get)
+        self.blueox_ctx.stop()
         return
 
     def _complete_get(self):
-        self.blueox.start()
+        self.blueox_ctx.start()
 
         with blueox.Context('request.extra'):
-            blueox.set('continue_id', self.blueox.id)
+            blueox.set('continue_id', self.blueox_ctx.id)
 
         self.write("Hello, world")
         self.finish()
@@ -84,7 +81,5 @@ if __name__ == "__main__":
     # probably isn't strictly necessary.
     tornado.autoreload.add_reload_hook(blueox.shutdown)
 
-    application.listen(8888)
+    application.listen(8885)
     tornado.ioloop.IOLoop.instance().start()
-
-
