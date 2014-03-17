@@ -17,6 +17,7 @@ import functools
 import logging
 import traceback
 import types
+import sys
 
 log = logging.getLogger(__name__)
 
@@ -31,17 +32,27 @@ import blueox
 def _gen_wrapper(ctx, generator):
     """Generator Wrapper that starts/stops our context
     """
-    while True:
-        ctx.start()
+    try:
+        yielded = None
+        while True:
+            ctx.start()
 
-        try:
-            v = generator.next()
-        except (tornado.gen.Return, StopIteration):
-            ctx.done()
-            raise
-        else:
+            value = generator.send(yielded)
+
             ctx.stop()
-            yield v
+
+            try:
+                yielded = yield value
+            except Exception:
+                ctx.start()
+                value = generator.throw(*sys.exc_info())
+                ctx.stop()
+
+                yielded = yield value
+
+    except (tornado.gen.Return, StopIteration):
+        ctx.done()
+        raise
 
 
 def coroutine(func):

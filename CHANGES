@@ -1,9 +1,15 @@
+blueox (0.7.1)
+
+  * Fixes to tornado coroutine where we properly return values
+
+-- Rhett Garber <rhettg@gmail.com>  Mon, 17 Mar 2014 11:35:00 -0700
+
 blueox (0.7.0)
 
   * Rewrite of tornado_utils to support tornado > 3.0
   * Leave logging configuration in Django to normal LOGGING settings.
 
--- Rhett Garber <rhettg@gmail.com>  Mon, 14 Mar 2014 17:36:00 -0700
+-- Rhett Garber <rhettg@gmail.com>  Fri, 14 Mar 2014 17:36:00 -0700
 
 blueox (0.6.0)
 
