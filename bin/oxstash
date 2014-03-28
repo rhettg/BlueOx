@@ -1,0 +1,95 @@
+#!/bin/python
+import argparse
+import sys
+import io
+import struct
+import logging
+import pprint
+import json
+import datetime
+
+import zmq
+import elasticsearch
+
+import blueox.client
+from blueox.utils import get_deep
+
+log = logging.getLogger('blueox.oxstash')
+
+def setup_logging(options):
+    if len(options.verbose) > 1:
+        level = logging.DEBUG
+    elif options.verbose:
+        level = logging.INFO
+    else:
+        level = logging.WARNING
+    
+    log_format = "%(asctime)s %(levelname)s:%(name)s: %(message)s"
+    logging.basicConfig(level=level, format=log_format, stream=sys.stdout)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Send blueox log events to elasticsearch")
+    parser.add_argument('--verbose', '-v', dest='verbose', action='append_const', const=True, default=list())
+
+    parser.add_argument('--type-name', '-n', dest='type_name', action='store', default=None,
+                        help="What event types to display. Can end with '*' for prefix matches.")
+    parser.add_argument('--host', '-H', dest='host', action='store', default="127.0.0.1:3513")
+    parser.add_argument('--log-path', '-l', dest='log_path', action='store', default=None)
+    parser.add_argument('--elasticsearch', '-e', action='append', default=[],
+                        help="Elasticsearch nodes to connect to (default: localhost:9200)")
+    parser.add_argument('--index_name', '-i', action='store', default=None,
+                       help="Elasticsearch index to use for events")
+    parser.add_argument('--index_base', '-p', action='store', default="blueox",
+                       help="Elasticsearch index to use, based on date")
+
+    options = parser.parse_args()
+
+    if len(options.elasticsearch) == 0:
+        options.elasticsearch.append("localhost:9200")
+
+    setup_logging(options)
+
+    es = elasticsearch.Elasticsearch(options.elasticsearch)
+
+    if sys.stdin.isatty():
+        log.info("Loading stream from oxd")
+
+        out_stream = blueox.client.subscribe_stream(options.host, options.type_name)
+    else:
+        if options.type_name is not None:
+            parser.error("Can't specify a name from stdin")
+            sys.exit(1)
+
+        log.info("Loading stream from stdin")
+        stdin = io.open(sys.stdin.fileno(), mode='rb', closefd=False)
+        out_stream = blueox.client.decode_stream(stdin)
+
+    for evt in out_stream:
+        timestamp = datetime.datetime.utcfromtimestamp(evt['end'])
+        evt_type = evt.pop('type')
+
+        if options.index_name:
+            index = options.index_name
+        else:
+            index = "%s-%s" % (options.index_base, timestamp.strftime('%Y.%m.%d'))
+
+        evt['duration'] = evt['end'] - evt['start']
+
+        # This appears to be the default timestamp key logstash/kibana looks for.
+        evt['@timestamp'] = timestamp.isoformat() + 'Z'
+
+        try:
+            resp = es.index(index=index, doc_type=evt_type, body=evt)
+        except elasticsearch.exceptions.RequestError:
+            log.exception("Failed sending event %r", evt['id'])
+        else:
+            if not resp.get('ok'):
+                log.error("Failed stashing to elasticsearch: %r", resp)
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (KeyboardInterrupt, SystemExit):
+        pass

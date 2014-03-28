@@ -270,6 +270,37 @@ For example:
     oxctl
 
 
+Reporting
+--------------
+
+### oxstash
+
+`oxstash` is a tool that can ship blueox logs to a running elasticsearch
+cluster where it can be used with the tool
+[Kibana](http://www.elasticsearch.org/overview/kibana) to explore and generate
+reports and dashboards.
+
+`oxstash` can be setup in a few ways.
+
+The defaults are essentially:
+
+    $ oxstash -p blueox -n "*" -e "localhost:9200"
+
+This would ship all logs from the local oxd instance to the elasticsearch node
+running on port 9200.  These logs will be stored indexes named
+`blueox-[YYYY.MM.DD]` which is similiar to logstash's scheme.
+
+You can also use `oxstash` to ship existing log files, by simply:
+
+  $ oxstash < requests.log
+
+If you have logs that need particular filtering or manipulation, you can still
+use oxstash as part of your pipeline.
+
+    $ cat requests.log | python clean_requests.py | oxstash
+
+`clean_requests.py` can be written to work over stdin or by connecting to a oxd
+instance by using tools provided in `blueox.client`
 
 Development
 -----------------

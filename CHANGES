@@ -1,3 +1,9 @@
+blueox (0.8.0)
+
+  * new oxstash tool for shipping logs to elasticsearch
+
+-- Rhett Garber <rhettg@gmail.com>  Fri, 28 Mar 2014 15:11:00 -0700
+
 blueox (0.7.1)
 
   * Fixes to tornado coroutine where we properly return values
