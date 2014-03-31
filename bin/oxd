@@ -182,7 +182,7 @@ def main():
 
     streamer_sock = zmq_context.socket(zmq.PUB)
     host, _ = options.control.split(':')
-    streamer_sock_port = streamer_sock.bind_to_random_port("tcp://%s" % host)
+    streamer_sock_port = streamer_sock.bind_to_random_port("tcp://%s" % host, min_port=35000, max_port=36000)
     log.info("Streaming port bound to %s:%d", host, streamer_sock_port)
 
     forward_sock = None

@@ -1,3 +1,9 @@
+blueox (0.8.1)
+
+  * Restrict streaming port allocation to a predefined range.
+
+-- Rhett Garber <rhettg@gmail.com>  Mon, 31 Mar 2014 13:48:00 -0700
+
 blueox (0.8.0)
 
   * new oxstash tool for shipping logs to elasticsearch

@@ -245,12 +245,12 @@ There are several types of network ports in use with BlueOx:
 
   1. Control Port (default 127.0.0.1:3513)
   1. Collection Port (default 127.0.0.1:3514)
-  1. Streaming Port (no default, randomonly assigned)
+  1. Streaming Port (randomonly assigned from 35000 to 36000)
 
 Both the Control and Collection ports are configurable from the command line.
 
 When configuring forwarding between oxd instances, you'll want to always use
-the collection port. 
+the collection port.
 
 When configuring an application to send data to a oxd instance, you'll want
 to use the collection port as well.
@@ -259,6 +259,10 @@ For administrative (and `oxview` work) you'll use the control port. The
 control port (and BlueOx administrative interface) can be used to discover all
 the other ports. The reason the collection port must be configured explicitly
 for actual logging purposes is to better handle reconnects and failures.
+
+The streaming port is used for clients to retrieve live data from `oxd`.  This
+port is allocated randomly in the range 35000 to 36000, the client will
+retrieve the actual port using a request through the control port.
 
 
 Administration
