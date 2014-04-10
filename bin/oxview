@@ -61,7 +61,7 @@ def main():
             sys.exit(1)
 
         log.info("Loading stream from stdin")
-        stdin = io.open(sys.stdin.fileno(), mode='rb', closefd=False)
+        stdin = io.open(sys.stdin.fileno(), buffering=0, mode='rb', closefd=False)
         out_stream = blueox.client.decode_stream(stdin)
 
     if options.group:

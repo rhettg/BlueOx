@@ -1,3 +1,9 @@
+blueox (0.8.2)
+
+  * Disable buffering for oxview stdin
+
+-- Rhett Garber <rhettg@gmail.com>  Mon, 31 Mar 2014 16:46:00 -0700
+
 blueox (0.8.1)
 
   * Restrict streaming port allocation to a predefined range.

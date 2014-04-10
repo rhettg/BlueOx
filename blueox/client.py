@@ -132,9 +132,3 @@ class Grouper(object):
                 yield self.dict.pop(event['id'])
 
         raise StopIteration
-
-
-
-
-
-
