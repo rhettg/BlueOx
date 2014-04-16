@@ -7,12 +7,16 @@ import logging
 import pprint
 import json
 import datetime
+import functools
 
 import zmq
 import elasticsearch
+import elasticsearch.helpers
 
 import blueox.client
 from blueox.utils import get_deep
+
+DEFAULT_HOST = "127.0.0.1:3513"
 
 log = logging.getLogger('blueox.oxstash')
 
@@ -28,13 +32,36 @@ def setup_logging(options):
     logging.basicConfig(level=level, format=log_format, stream=sys.stdout)
 
 
+def build_doc(options, evt):
+    timestamp = datetime.datetime.utcfromtimestamp(evt['end'])
+    evt_type = evt.pop('type')
+
+    if options.index_name:
+        index = options.index_name
+    else:
+        index = "%s-%s" % (options.index_base, timestamp.strftime('%Y.%m.%d'))
+
+    evt['duration'] = evt['end'] - evt['start']
+
+    # This appears to be the default timestamp key logstash/kibana looks for.
+    evt['@timestamp'] = timestamp.isoformat() + 'Z'
+
+    action = {
+        '_index': index,
+        '_type': evt_type,
+        '_source': evt,
+    }
+
+    return elasticsearch.helpers.expand_action(action)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Send blueox log events to elasticsearch")
     parser.add_argument('--verbose', '-v', dest='verbose', action='append_const', const=True, default=list())
 
     parser.add_argument('--type-name', '-n', dest='type_name', action='store', default=None,
                         help="What event types to display. Can end with '*' for prefix matches.")
-    parser.add_argument('--host', '-H', dest='host', action='store', default="127.0.0.1:3513")
+    parser.add_argument('--host', '-H', dest='host', action='store', default=None)
     parser.add_argument('--log-path', '-l', dest='log_path', action='store', default=None)
     parser.add_argument('--elasticsearch', '-e', action='append', default=[],
                         help="Elasticsearch nodes to connect to (default: localhost:9200)")
@@ -42,6 +69,8 @@ def main():
                        help="Elasticsearch index to use for events")
     parser.add_argument('--index_base', '-p', action='store', default="blueox",
                        help="Elasticsearch index to use, based on date")
+    parser.add_argument('--chunk_size', action='store', type=int, default=500,
+                       help="How many events to do together in a bulk operation")
 
     options = parser.parse_args()
 
@@ -52,10 +81,15 @@ def main():
 
     es = elasticsearch.Elasticsearch(options.elasticsearch)
 
-    if sys.stdin.isatty():
+    if sys.stdin.isatty() or options.host:
         log.info("Loading stream from oxd")
 
-        out_stream = blueox.client.subscribe_stream(options.host, options.type_name)
+        if options.host:
+            host = options.host
+        else:
+            host = DEFAULT_HOST
+
+        out_stream = blueox.client.subscribe_stream(host, options.type_name)
     else:
         if options.type_name is not None:
             parser.error("Can't specify a name from stdin")
@@ -64,27 +98,15 @@ def main():
         log.info("Loading stream from stdin")
         out_stream = blueox.client.stdin_stream()
 
-    for evt in out_stream:
-        timestamp = datetime.datetime.utcfromtimestamp(evt['end'])
-        evt_type = evt.pop('type')
+    action_callback = functools.partial(build_doc, options)
+    bulk_streamer = elasticsearch.helpers.streaming_bulk(
+        es, out_stream,
+        chunk_size=options.chunk_size, expand_action_callback=action_callback)
 
-        if options.index_name:
-            index = options.index_name
-        else:
-            index = "%s-%s" % (options.index_base, timestamp.strftime('%Y.%m.%d'))
-
-        evt['duration'] = evt['end'] - evt['start']
-
-        # This appears to be the default timestamp key logstash/kibana looks for.
-        evt['@timestamp'] = timestamp.isoformat() + 'Z'
-
-        try:
-            resp = es.index(index=index, doc_type=evt_type, body=evt)
-        except elasticsearch.exceptions.RequestError:
-            log.exception("Failed sending event %r", evt['id'])
-        else:
-            if not resp.get('ok'):
-                log.error("Failed stashing to elasticsearch: %r", resp)
+    for result in bulk_streamer:
+        batch_ok, item = result
+        if item['create'].get('ok') is not True:
+            print item
 
 
 if __name__ == '__main__':
