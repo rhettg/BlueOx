@@ -95,7 +95,7 @@ class LogFileStream(object):
         return True
 
     def log_file_path(self):
-        day_str = datetime.datetime.now().strftime('%Y%m%d')
+        day_str = datetime.datetime.utcnow().strftime('%Y%m%d')
         return os.path.normpath(os.path.join(self.log_path + '/', "%s/%s-%s.log" % (day_str, self.name, day_str)))
 
     def open(self):
