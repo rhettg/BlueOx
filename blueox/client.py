@@ -13,6 +13,8 @@ This module provides utilities for writing client applications which connect or 
 import collections
 import logging
 import struct
+import io
+import sys
 
 import msgpack
 import zmq
@@ -90,6 +92,12 @@ def subscribe_stream(control_host, subscribe):
                 yield msgpack.unpackb(data)
             else:
                 break
+
+
+def stdin_stream():
+    stdin = io.open(sys.stdin.fileno(), buffering=0, mode='rb', closefd=False)
+    stream = blueox.client.decode_stream(stdin)
+    return stream
 
 
 class Grouper(object):

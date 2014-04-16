@@ -62,8 +62,7 @@ def main():
             sys.exit(1)
 
         log.info("Loading stream from stdin")
-        stdin = io.open(sys.stdin.fileno(), mode='rb', closefd=False)
-        out_stream = blueox.client.decode_stream(stdin)
+        out_stream = blueox.client.stdin_stream()
 
     for evt in out_stream:
         timestamp = datetime.datetime.utcfromtimestamp(evt['end'])
