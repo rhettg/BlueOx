@@ -96,7 +96,7 @@ def subscribe_stream(control_host, subscribe):
 
 def stdin_stream():
     stdin = io.open(sys.stdin.fileno(), buffering=0, mode='rb', closefd=False)
-    stream = blueox.client.decode_stream(stdin)
+    stream = decode_stream(stdin)
     return stream
 
 
