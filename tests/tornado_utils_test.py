@@ -9,6 +9,7 @@ import tornado.ioloop
 import tornado.gen
 import tornado.web
 import blueox.tornado_utils
+from blueox.utils import get_deep
 
 # vendor module. Tornado testing in Testify
 import tornado_test
@@ -47,10 +48,36 @@ class AsyncErrorHandler(blueox.tornado_utils.BlueOxRequestHandlerMixin, tornado.
         return super(AsyncErrorHandler, self).write_error(status_code, **kwargs)
 
 
+class AsyncTimeoutHandler(blueox.tornado_utils.BlueOxRequestHandlerMixin, tornado.web.RequestHandler):
+    @blueox.tornado_utils.coroutine
+    def get(self):
+        loop = self.request.connection.stream.io_loop
+
+        called = yield tornado.gen.Task(loop.add_timeout, time.time() + 1.0)
+
+
+class AsyncRecurseTimeoutHandler(blueox.tornado_utils.BlueOxRequestHandlerMixin, tornado.web.RequestHandler):
+    @blueox.tornado_utils.coroutine
+    def post(self):
+        loop = self.request.connection.stream.io_loop
+        http_client = blueox.tornado_utils.AsyncHTTPClient(loop)
+
+        blueox.set("start", True)
+        try:
+            f = yield http_client.fetch(self.request.body, request_timeout=0.5)
+        except tornado.httpclient.HTTPError, e:
+            self.write("got it")
+        else:
+            self.write("nope")
+
+        blueox.set("end", True)
+
+
 class MainHandler(blueox.tornado_utils.BlueOxRequestHandlerMixin, tornado.web.RequestHandler):
     def get(self):
         blueox.set('async', False)
         self.write("Hello, world")
+
 
 
 class SimpleTestCase(tornado_test.AsyncHTTPTestCase):
@@ -74,6 +101,8 @@ class SimpleTestCase(tornado_test.AsyncHTTPTestCase):
             (r"/", MainHandler),
             (r"/async", AsyncHandler),
             (r"/error", AsyncErrorHandler),
+            (r"/timeout", AsyncTimeoutHandler),
+            (r"/recurse_timeout", AsyncRecurseTimeoutHandler),
         ])
 
         application.test_url = self.get_url("/")
@@ -97,6 +126,50 @@ class SimpleTestCase(tornado_test.AsyncHTTPTestCase):
                     found_exception = True
 
         assert found_exception
+
+    def test_timeout_error(self):
+        f = self.http_client.fetch(self.get_url("/timeout"), self.stop, request_timeout=0.5)
+        resp = self.wait()
+
+        #for ctx_id in self.log_ctx:
+            #print ctx_id
+            #for ctx in self.log_ctx[ctx_id]:
+                #pprint.pprint(ctx.to_dict())
+
+        assert_equal(len(self.log_ctx), 1)
+        ctx = self.log_ctx[self.log_ctx.keys()[0]][0]
+        assert_equal(get_deep(ctx.to_dict(), 'body.response.code'), 599)
+
+    def test_recurse_timeout_error(self):
+        url = self.get_url("/timeout")
+        f = self.http_client.fetch(self.get_url("/recurse_timeout"), self.stop,
+                                   body=url,
+                                   method="POST",
+                                   request_timeout=1.5)
+        resp = self.wait()
+
+        #for ctx_id in self.log_ctx:
+            #print ctx_id
+            #for ctx in self.log_ctx[ctx_id]:
+                #pprint.pprint(ctx.to_dict())
+
+        assert_equal(resp.code, 200)
+        assert_equal(resp.body, "got it")
+
+        found_timeout = False
+        found_request = False
+        for ctx_list in self.log_ctx.values():
+            for ctx in ctx_list:
+                c = ctx.to_dict()
+                if c['type'] == 'request.httpclient' and c['body']['response']['code'] == 599:
+                    found_timeout = True
+
+                if c['type'] == 'request' and get_deep(c, 'body.start'):
+                    assert get_deep(c, 'body.end')
+                    found_request = True
+
+        assert found_timeout
+        assert found_request
 
     def test_context(self):
         self.http_client.fetch(self.get_url("/async"), self.stop)

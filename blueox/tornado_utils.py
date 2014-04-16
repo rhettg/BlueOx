@@ -18,11 +18,13 @@ import logging
 import traceback
 import types
 import sys
+import time
 
 log = logging.getLogger(__name__)
 
 import tornado.web
 import tornado.gen
+import tornado.httpclient
 import tornado.simple_httpclient
 import tornado.stack_context
 
@@ -138,15 +140,16 @@ class AsyncHTTPClient(tornado.simple_httpclient.SimpleAsyncHTTPClient):
         return super(AsyncHTTPClient, self).__init__(*args, **kwargs)
 
     def fetch(self, request, callback=None, **kwargs):
+        start_time = time.time()
+
+        if isinstance(request, basestring):
+            request = tornado.httpclient.HTTPRequest(url=request, **kwargs)
+
         ctx = blueox.Context(self.blueox_name)
         ctx.start()
-        if isinstance(request, basestring):
-            ctx.set('request.uri', request)
-            ctx.set('request.method', kwargs.get('method', 'GET'))
-        else:
-            ctx.set('request.uri', request.url)
-            ctx.set('request.method', request.method)
-            ctx.set('request.size', len(request.body) if request.body else 0)
+        ctx.set('request.uri', request.url)
+        ctx.set('request.method', request.method)
+        ctx.set('request.size', len(request.body) if request.body else 0)
 
         ctx.stop()
 
@@ -165,15 +168,28 @@ class AsyncHTTPClient(tornado.simple_httpclient.SimpleAsyncHTTPClient):
 
         if callback is None:
             def fetch_complete(future):
-                complete_context(future.result())
+                # This error handling is just copied from tornado.httpclient as
+                # we need to record a real HTTPError. httpclient might do the same thing
+                # again if needs to deal with the caller's callbacks.
+                exc = future.exception()
+                if isinstance(exc, tornado.httpclient.HTTPError) and exc.response is not None:
+                    response = exc.response
+                elif exc is not None:
+                    response = tornado.httpclient.HTTPResponse(
+                        request, 599, error=exc,
+                        request_time=time.time() - start_time)
+                else:
+                    response = future.result()
 
-            future = super(AsyncHTTPClient, self).fetch(request, **kwargs)
+                complete_context(response)
+
+            future = super(AsyncHTTPClient, self).fetch(request)
             future.add_done_callback(fetch_complete)
         else:
             def callback_wrapper(response):
                 complete_context(response)
                 callback(response)
 
-            future = super(AsyncHTTPClient, self).fetch(request, callback=callback_wrapper, **kwargs)
+            future = super(AsyncHTTPClient, self).fetch(request, callback=callback_wrapper)
 
         return future
