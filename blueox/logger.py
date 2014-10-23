@@ -22,17 +22,17 @@ class LogHandler(logging.Handler):
 
     The type name, if not specified will be something like '<my parent context>.log'
     """
-    def __init__(self, name=None):
+    def __init__(self, type_name=None):
         super(LogHandler, self).__init__()
 
-        self.name = name
+        self.type_name = type_name
 
     def emit(self, record):
         # We don't want any endless recursion
         if record.name.startswith('blueox'):
             return
 
-        with Context(self.name or '.log') as c:
+        with Context(self.type_name or '.log') as c:
             c.set('name', record.name)
             c.set('level', record.levelname)
             c.set('msg', record.getMessage()) 
