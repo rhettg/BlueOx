@@ -1,3 +1,9 @@
+blueox (0.8.3)
+
+  * Register atexit function to prevent hangs.
+
+-- Rhett Garber <rhettg@gmail.com>  Wed, 22 Oct 2014 17:33:00 -0700
+
 blueox (0.8.2)
 
   * Disable buffering for oxview stdin

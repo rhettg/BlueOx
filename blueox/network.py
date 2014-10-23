@@ -13,6 +13,7 @@ This module provides our interface into ZeroMQ
 import logging
 import threading
 import struct
+import atexit
 
 import zmq
 import msgpack
@@ -119,3 +120,5 @@ def close():
         threadLocal.zmq_socket = None
 
     _zmq_context = None
+
+atexit.register(close)
