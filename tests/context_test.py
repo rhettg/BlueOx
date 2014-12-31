@@ -79,6 +79,31 @@ class FindClosestContextTestCase(TestCase):
         assert_equal(test_ctx, None)
 
 
+class FindContextTestCase(TestCase):
+    def test_by_name(self):
+        with context.Context('test.foo') as ctx:
+            test_ctx = context.find_context('test.foo')
+            assert_equal(test_ctx, ctx)
+
+    def test_current(self):
+        with context.Context('test'):
+            with context.Context('test.foo') as ctx:
+                test_ctx = context.find_context('.')
+                assert_equal(test_ctx, ctx)
+
+    def test_parent(self):
+        with context.Context('test') as ctx:
+            with context.Context('test.foo'):
+                test_ctx = context.find_context('..')
+                assert_equal(test_ctx, ctx)
+
+    def test_top(self):
+        with context.Context('test') as ctx:
+            with context.Context('test.foo'):
+                test_ctx = context.find_context('^')
+                assert_equal(test_ctx, ctx)
+
+
 class ModuleLevelTestCase(TestCase):
     def test(self):
         with blueox.Context('test', 5):

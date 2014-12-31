@@ -282,7 +282,17 @@ def find_closest_context(type_name):
 def find_context(type_name):
     init_contexts()
 
-    return _get_context(type_name)
+    if type_name == '.':
+        return current_context()
+    elif type_name == '^':
+        return top_context()
+    elif type_name == '..':
+        try:
+            return threadLocal._contexts[-2]
+        except IndexError:
+            return None
+    else:
+        return _get_context(type_name)
 
 
 def set(*args, **kwargs):
