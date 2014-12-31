@@ -6,7 +6,7 @@ import blueox
 
 from django.conf import settings
 
-class Middleware:
+class Middleware(object):
     def __init__(self):
         host = getattr(settings, 'BLUEOX_HOST', '127.0.0.1')
         port = getattr(settings, 'BLUEOX_PORT', 3514)
@@ -28,13 +28,6 @@ class Middleware:
         blueox.set('uri', request.build_absolute_uri())
         blueox.set('client_ip', request.META['REMOTE_ADDR'])
 
-        for key in ('version', 'revision'):
-            if hasattr(request, key):
-                blueox.set(key, getattr(request, key))
-
-        if request.user:
-            blueox.set('user', request.user.id)
-
         return None
 
     def process_response(self, request, response):
@@ -42,8 +35,18 @@ class Middleware:
         if not hasattr(request, 'blueox'):
             return response
 
+        # We collect some additional data in the response, just to ensure
+        # middleware ordering doesn't matter.
+        if hasattr(request, 'user'):
+            blueox.set('user', request.user.id)
+
+        for key in ('version', 'revision'):
+            if hasattr(request, key):
+                blueox.set(key, getattr(request, key))
+
         # Other middleware may have blocked our response.
         if response is not None:
+
             blueox.set('response_status_code', response.status_code)
 
             if not response.streaming:
