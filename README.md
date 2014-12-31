@@ -64,10 +64,10 @@ Contexts can be heirarchical. This means you can generate sub-events that
 are related to the parent event and can be joined together in post-processing by the common id they share.
 Indicate you want this behavior for your context by naming with a prefixing '.'.
 
-For example, inside some application code (in `do_stuff()` above), you might execute some sql queries.
+For example, inside some application code (in `do_stuff()` above), you might execute some SQL queries.
 
     def execute(cursor, query, args):
-        with blueox.Context('.sql'):
+        with blueox.Context('.db):
             blueox.set('query', query)
             with blueox.timeit('query_time'):
                 res = cursor.execute(query, args)
@@ -75,12 +75,28 @@ For example, inside some application code (in `do_stuff()` above), you might exe
         return res
 
 Each SQL query would then be logged as a seperate event. However, each event
-will have the unique id provided by the parent `request` context. The name of the context will become `request.sql`.
+will have the unique id provided by the parent `request` context. The name of
+the context will become `request.db`.
 
-You can provide you're own id or allow BlueOx to autogenerate one for the top-level context.
+Where your context fits into the heirarchy can also be controlled. For example,
+if you wanted to ensure all your SQL logging was in the same event name, you
+would base your new context on the top-level using the prefix `^`:
+
+    def execute(cursor, query, args):
+        with blueox.Context('^.db):
+            blueox.set('query', query)
+        return res
+
+Or, if you know exactly what the heirarchy looks like, you can directly
+specifify the event name:
+
+    def execute(cursor, query, args):
+        with blueox.Context('request.db):
+            blueox.set('query', query)
+        return res
 
 BlueOx also provides the ability to do sampling. This means only a set
-percentage of generate events will actually be logged. You can choose sampling
+percentage of generated events will actually be logged. You can choose sampling
 based on any level of the context:
 
     with blueox.Context('.memcache', sample=('..', 0.25)):

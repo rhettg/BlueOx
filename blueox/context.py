@@ -28,22 +28,63 @@ _recorder_function = None
 class Context(object):
     __slots__ = ["name", "data", "id", "_writable", "start_time", "_sample_checks", "enabled"]
     def __init__(self, type_name, id=None, sample=None):
+        """Create a new blueox logging context
 
+        Arguments:
+        type_name -- The Name for the event. Special prefix characters can
+            control the name with respect to where this context fits into the
+            heirarchy of parent requests. Examples:
+
+            '.foo' - Will generate a name like '<parent name>.foo'
+            '.foo.bar' - If the parent ends in '.foo', the final name will be '<parent name>.bar'
+            '^.foo' - Will use the top-most context, generating '<top parent name>.foo'
+            'top.foo.bar' - The name will be based on the longest matched
+                parent context. If there is a parent context named 'top' and a
+                parent context named 'top.foo', the new context will be named
+                'top.foo.bar'
+
+        id -- (optional) user-generated identifier
+
+        sample -- (optional, tuple) of (sample parent, sample ratio). Examples:
+
+            ('..', 0.25) will enable logging for 25% of the parent contexts.
+            ('.', 0.25) will enable logging for 25% of the current context.
+        """
         if type_name.startswith('.'):
             parent_ctx = current_context()
-            if parent_ctx is None:
-                self.name = type_name[1:]
-            else:
-                parent_parts = sorted(enumerate(parent_ctx.name.split('.')), reverse=True)
-                for ppart_ndx, ppart in parent_parts:
-                    if ppart == type_name.split('.')[1]:
-                        self.name = '.'.join(parent_ctx.name.split('.')[:ppart_ndx] + type_name.split('.')[1:])
-                        break
-                else:
-                    self.name = parent_ctx.name + type_name
+
+            if type_name.startswith('..'):
+                raise ValueError("Invalid type name")
+
+            clean_type_name = type_name[1:]
+        elif type_name.startswith('^'):
+            parent_ctx = top_context()
+
+            if not type_name.startswith('^.'):
+                raise ValueError("Invalid relative type name syntax")
+
+            clean_type_name = type_name[2:]
         else:
-            parent_ctx = None
-            self.name = type_name
+            parent_ctx = find_closest_context(type_name)
+            if parent_ctx is None:
+                clean_type_name = type_name
+            else:
+                # Base our new name where our parent leaves off
+                if parent_ctx.name == type_name:
+                    raise ValueError("Duplicate type name")
+
+                clean_type_name = type_name[len(parent_ctx.name) + 1:]
+
+        if parent_ctx is None:
+            self.name = clean_type_name
+        else:
+            parent_parts = sorted(enumerate(parent_ctx.name.split('.')), reverse=True)
+            for ppart_ndx, ppart in parent_parts:
+                if ppart == type_name.split('.')[1]:
+                    self.name = '.'.join(parent_ctx.name.split('.')[:ppart_ndx] + type_name.split('.')[1:])
+                    break
+            else:
+                self.name = '.'.join((parent_ctx.name, clean_type_name))
 
         self.data = {}
         self.start_time = time.time()
@@ -63,12 +104,20 @@ class Context(object):
             self.enabled = False
         elif sample:
             sample_name, rate = sample
+
             if sample_name == type_name or sample_name == '.':
-                self.enabled = bool(random.random() <= rate)
-            elif parent_ctx and sample_name == '..':
-                self.enabled = parent_ctx.sampled_for(type_name, rate)
+                sample_parent_ctx = self
+            elif sample_name == '..':
+                sample_parent_ctx = parent_ctx or self
+            elif sample_name == '^':
+                sample_parent_ctx = top_context() or self
             else:
-                self.enabled = _get_context(sample_name).sampled_for(type_name, rate)
+                sample_parent_ctx = _get_context(sample_name)
+
+            if sample_parent_ctx == self:
+                self.enabled = bool(random.random() <= rate)
+            else:
+                self.enabled = sample_parent_ctx.sampled_for(type_name, rate)
         else:
             self.enabled = True
 
@@ -190,20 +239,69 @@ def current_context():
     except IndexError:
         return None
 
+def top_context():
+    """Return the outermost context"""
+    init_contexts()
+    try:
+        return threadLocal._contexts[0]
+    except IndexError:
+        return None
+
+
+def _calculate_match_length(a_parts, b_parts):
+    length = 0
+    for a, b in zip(a_parts, b_parts):
+        if a != b:
+            break
+        length += 1
+
+    return length
+
+
+def find_closest_context(type_name):
+    init_contexts()
+
+    type_name_parts = type_name.split('.')
+    if not type_name_parts[0]:
+        raise ValueError(type_name)
+
+    matched_ctx = None
+    matched_ctx_len = 0
+    for ctx in threadLocal._contexts:
+        ctx_parts = ctx.name.split('.')
+
+        shared_part_count = _calculate_match_length(type_name_parts, ctx_parts)
+
+        if matched_ctx_len < shared_part_count:
+            matched_ctx = ctx
+            matched_ctx_len = shared_part_count
+
+    return matched_ctx
+
+
+def find_context(type_name):
+    init_contexts()
+
+    return _get_context(type_name)
+
+
 def set(*args, **kwargs):
     context = current_context()
     if context:
         context.set(*args, **kwargs)
+
 
 def append(*args, **kwargs):
     context = current_context()
     if context:
         context.append(*args, **kwargs)
 
+
 def add(*args, **kwargs):
     context = current_context()
     if context:
         context.add(*args, **kwargs)
+
 
 def context_wrap(type_name, sample=None):
     """Decorator for wrapping a function call with a context"""

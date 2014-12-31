@@ -28,11 +28,55 @@ class NestedIDTestCase(TestCase):
 
 
 class NestedOverlapIDTestCase(TestCase):
-    def test(self):
+    def test_relative(self):
         with context.Context('test.bar', 5):
             with context.Context('.bar.foo') as c:
                 assert_equal(c.name, 'test.bar.foo')
                 assert_equal(c.id, 5)
+
+    def test_from_top(self):
+        with context.Context('test.bar', 5):
+            with context.Context('^.bar.foo') as c:
+                assert_equal(c.name, 'test.bar.foo')
+                assert_equal(c.id, 5)
+
+
+class TopNestedIDTestCase(TestCase):
+    def test(self):
+        with context.Context('test', 5):
+            with context.Context('.bar'):
+                with context.Context('^.foo') as c:
+                    assert_equal(c.name, 'test.foo')
+                    assert_equal(c.id, 5)
+
+
+class DuplicateNestedTestCase(TestCase):
+    def test(self):
+        with context.Context('test.bar', 5):
+            try:
+                with context.Context('test.bar'):
+                    pass
+            except ValueError:
+                pass
+            else:
+                assert False, "Should have raised exception"
+
+
+class FindClosestContextTestCase(TestCase):
+    def test_simple(self):
+        with context.Context('test.bar', 5) as ctx:
+            test_ctx = context.find_closest_context('test.bar')
+            assert_equal(ctx, test_ctx)
+
+    def test_skip_up(self):
+        with context.Context('test', 5) as ctx:
+            with context.Context('.bar'):
+                test_ctx = context.find_closest_context('test')
+                assert_equal(ctx, test_ctx)
+
+    def test_not_found(self):
+        test_ctx = context.find_closest_context('test')
+        assert_equal(test_ctx, None)
 
 
 class ModuleLevelTestCase(TestCase):
