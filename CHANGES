@@ -1,3 +1,10 @@
+blueox (0.9.1)
+
+  * Just log a warning if a duplicate context name is used.
+  * Expose clear_contexts() function to clear out open contexts.
+
+-- Rhett Garber <rhettg@gmail.com>  Fri, 2 Jan 2015 15:00:00 -0800
+
 blueox (0.9.0)
 
   * Fix django middleware to be less dependent on ordering.

@@ -17,9 +17,12 @@ import random
 import struct
 import threading
 import functools
+import logging
 
 from . import utils
 from . import network
+
+log = logging.getLogger(__name__)
 
 # This will be redefined by our configuration to tell us where to record stuff
 # to.
@@ -69,11 +72,14 @@ class Context(object):
             if parent_ctx is None:
                 clean_type_name = type_name
             else:
-                # Base our new name where our parent leaves off
                 if parent_ctx.name == type_name:
-                    raise ValueError("Duplicate type name")
-
-                clean_type_name = type_name[len(parent_ctx.name) + 1:]
+                    # Previously we crashed with this being an invalid name,
+                    # but we probably don't want to crash even though it's a
+                    # highly unusual situation.
+                    log.warning("Duplicate type name: %r", type_name)
+                    clean_type_name = type_name
+                else:
+                    clean_type_name = type_name[len(parent_ctx.name) + 1:]
 
         if parent_ctx is None:
             self.name = clean_type_name
@@ -208,6 +214,20 @@ def init_contexts():
         threadLocal._contexts = []
         threadLocal._contexts_by_name = {}
         threadLocal.init = True
+
+
+def clear_contexts():
+    """Remove any currently active contexts.
+
+    Does not 'close' any contexts, but just clears out any we may still have a
+    handle on. This is useful in testing or anywhere else where you want to be
+    absolutely sure you have a clean environment.
+    """
+    init_contexts()
+
+    threadLocal._contexts_by_name.clear()
+    del threadLocal._contexts[:]
+
 
 def _add_context(context):
     init_contexts()

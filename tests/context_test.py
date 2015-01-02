@@ -50,18 +50,6 @@ class TopNestedIDTestCase(TestCase):
                     assert_equal(c.id, 5)
 
 
-class DuplicateNestedTestCase(TestCase):
-    def test(self):
-        with context.Context('test.bar', 5):
-            try:
-                with context.Context('test.bar'):
-                    pass
-            except ValueError:
-                pass
-            else:
-                assert False, "Should have raised exception"
-
-
 class FindClosestContextTestCase(TestCase):
     def test_simple(self):
         with context.Context('test.bar', 5) as ctx:
@@ -109,9 +97,11 @@ class ModuleLevelTestCase(TestCase):
         with blueox.Context('test', 5):
             blueox.set('foo', True)
 
+
 class EmptyModuleLevelTestCase(TestCase):
     def test(self):
         blueox.set('foo', True)
+
 
 class SampleTestCase(TestCase):
     def test(self):
@@ -158,5 +148,11 @@ class ContextWrapTestCase(TestCase):
         assert_equal(self.context.to_dict()['body']['value'], 'test')
 
 
+class ClearContextsTestCase(TestCase):
+    def test(self):
+        c = blueox.Context('test')
+        c.start()
 
+        blueox.clear_contexts()
 
+        assert_equal(blueox.current_context(), None)

@@ -10,7 +10,7 @@ blueox
 """
 
 __title__ = 'blueox'
-__version__ = '0.9.0'
+__version__ = '0.9.1'
 __author__ = 'Rhett Garber'
 __author_email__ = 'rhettg@gmail.com'
 __license__ = 'ISC'
@@ -22,7 +22,15 @@ import logging
 
 from . import utils
 from . import network
-from .context import Context, set, append, add, context_wrap, find_context
+from .context import (
+    Context,
+    set,
+    append,
+    add,
+    context_wrap,
+    current_context,
+    find_context,
+    clear_contexts)
 from . import context as _context_mod
 from .errors import Error
 from .logger import LogHandler
