@@ -15,8 +15,8 @@ __author__ = 'Rhett Garber'
 __author_email__ = 'rhettg@gmail.com'
 __license__ = 'ISC'
 __copyright__ = 'Copyright 2012 Rhett Garber'
-__description__ = "A library for python-based application logging and data collection"
-__url__ = "https://github.com/rhettg/BlueOx"
+__description__ = 'A library for python-based application logging and data collection'
+__url__ = 'https://github.com/rhettg/BlueOx'
 
 import logging
 
