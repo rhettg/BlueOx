@@ -40,6 +40,20 @@ class NestedOverlapIDTestCase(TestCase):
                 assert_equal(c.name, 'test.bar.foo')
                 assert_equal(c.id, 5)
 
+    def test_explicit(self):
+        with context.Context('test.bar', 5):
+            with context.Context('test.bar.foo') as c:
+                assert_equal(c.name, 'test.bar.foo')
+                assert_equal(c.id, 5)
+
+
+
+class NoNestedOverlapTestCase(TestCase):
+    def test(self):
+        with context.Context('test.bar'):
+            with context.Context('test.foo') as c:
+                assert_equal(c.name, 'test.foo')
+
 
 class TopNestedIDTestCase(TestCase):
     def test(self):

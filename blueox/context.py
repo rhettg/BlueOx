@@ -78,8 +78,14 @@ class Context(object):
                     # highly unusual situation.
                     log.warning("Duplicate type name: %r", type_name)
                     clean_type_name = type_name
-                else:
+                elif type_name.startswith(parent_ctx.name):
+                    # If the parent is a prefix of our current type name, we'll
+                    # keep it as the parent, otherwise we're a separate branch
+                    # of the context tree.
                     clean_type_name = type_name[len(parent_ctx.name) + 1:]
+                else:
+                    clean_type_name = type_name
+                    parent_ctx = None
 
         if parent_ctx is None:
             self.name = clean_type_name
