@@ -15,11 +15,25 @@ import logging
 import struct
 import io
 import sys
+import os
 
 import msgpack
 import zmq
 
+from . import ports
+
 log = logging.getLogger(__name__)
+
+
+def default_host(host=None):
+    """Build a default host string for clients
+
+    This is specifically for the control port, so its NOT for use by loggers.
+    We also respect environment variables BLUEOX_CLIENT_HOST and _PORT if
+    command line options aren't your thing.
+    """
+    return ports.default_control_host(host)
+
 
 def decode_stream(stream):
     """A generator which reads data out of the buffered file stream, unpacks and decodes the blueox events
@@ -30,6 +44,7 @@ def decode_stream(stream):
     unpacker = msgpack.Unpacker(stream)
     for msg in unpacker:
         yield msg
+
 
 def retrieve_stream_host(context, control_host):
     poller = zmq.Poller()
@@ -47,6 +62,7 @@ def retrieve_stream_host(context, control_host):
     else:
         log.warning("Failed to connect to server")
         return None
+
 
 def subscribe_stream(control_host, subscribe):
     context = zmq.Context()

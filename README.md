@@ -111,9 +111,14 @@ events would be logged.
 If BlueOx has not been explicitly configured, all the calls to BlueOx will essentially be no-ops. This is
 rather useful in testing contexts so as to not generate a bunch of bogus data.
 
-For production use, you'll need to set the collection host and port:
+For production use, you'll need to set the collection host:
 
-    blueox.configure("127.0.0.1", 3514)
+    blueox.default_configure()
+
+This will use the default of `127.0.0.1:3514` or respect the environment
+variable `BLUEOX_HOST`. Alternately, you can explicitly configure a host:
+
+    blueox.default_configure("hostname")
 
 ### Logging module integration
 
@@ -162,15 +167,9 @@ size. Optionally if there are `request.user.id`, `request.version`, or
 that occur during a request are also logged to BlueOx.
 
 To setup Flask integration please take a look at the following example:
-#### Flask Configuration Example:
-    ```python
-    class ApplicationConfig(object):
-        BLUEOX_HOST = '127.0.0.1'
-        BLUEOX_PORT = 3514
-        BLUEOX_NAME = 'myapp'
-    ```
 
 #### Flask Code Example:
+
     ```python
     from flask import Flask
     from blueox.contrib.flask import BlueOxMiddleware
@@ -181,6 +180,18 @@ To setup Flask integration please take a look at the following example:
     BlueOxMiddleware(app)
     ```
 
+By default, BlueOx will log to a running oxd instance on localhost. This can be
+configured via Flask ApplicationConfig object:
+
+#### Flask Configuration Example:
+
+    ```python
+    class ApplicationConfig(object):
+        BLUEOX_HOST = 'hostname'
+        BLUEOX_NAME = 'myapp'
+    ```
+
+Setting `BLUEOX_HOST = None` will disable logging. This may be helpful in a testing context.
 
 ### Django Integration
 
@@ -191,8 +202,7 @@ BlueOx provides middleware that can be plugged in to any Django application.
 Default settings should work fine, but BlueOx can be customized by setting
 something like the following:
 
-    BLUEOX_HOST=127.0.0.1
-    BLUEOX_PORT=3514
+    BLUEOX_HOST='hostname'
     BLUEOX_NAME='myapp'
 
 The `request` keys are someone similiar between Tornado integration and Django,
@@ -250,11 +260,11 @@ result in any data loss as the local instances would just queue up their events.
 
 So on your local machine, you'd run:
 
-    oxd --forward=master:3514
+    oxd --forward=hostname
 
 And on the master collection machine, you'd run:
 
-    oxd --collect="*:3514" --log-path=/var/log/blueox/
+    oxd --collect="*" --log-path=/var/log/blueox/
 
 Logs are encoded in the MsgPack format (http://msgpack.org/), so you'll need
 some tooling for doing log analysis. This is easily done with the tool
@@ -266,11 +276,11 @@ For example:
 
     oxview --log-path=/var/log/blueox --type-name="request" --start-date=20120313 --end-date=20120315
 
-Where `request` is the channel you want to examine.
+Where `request` is the event type you're interested in.
 
 You can also connect to `oxd` and get a live streaming of log data:
 
-    oxview -H localhost:3513 --type-name="request*"
+    oxview -H hostname --type-name="request*"
 
 Note the use of '*' to indicate a prefix query for the type filter. This will
 return all events with a type that begins with 'request'
@@ -287,8 +297,8 @@ For an `oxd` forwarding to another `oxd`, the only limit is how much memory the 
 
 There are several types of network ports in use with BlueOx:
 
-  1. Control Port (default 127.0.0.1:3513)
-  1. Collection Port (default 127.0.0.1:3514)
+  1. Control Port (default 3513)
+  1. Collection Port (default 3514)
   1. Streaming Port (randomonly assigned from 35000 to 36000)
 
 Both the Control and Collection ports are configurable from the command line.

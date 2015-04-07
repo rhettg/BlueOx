@@ -11,8 +11,6 @@ import zmq
 
 import blueox.client
 
-DEFAULT_HOST = "127.0.0.1:3513"
-
 log = logging.getLogger('blueox.view')
 
 def setup_logging(options):
@@ -60,10 +58,7 @@ def main():
     if sys.stdin.isatty() or options.host:
         log.info("Loading stream from oxd")
 
-        if options.host:
-            host = options.host
-        else:
-            host = DEFAULT_HOST
+        host = blueox.client.default_host(options.host)
 
         out_stream = blueox.client.subscribe_stream(host, options.type_name)
     else:

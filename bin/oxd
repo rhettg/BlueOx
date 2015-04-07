@@ -23,11 +23,11 @@ import signal
 import struct
 import time
 
-import json
 import zmq
 import msgpack
 
 from blueox import network
+from blueox import ports
 
 # How long do we wait for network traffic before running our poll loop anyway.
 POLL_LOOP_TIMEOUT_MS = 1000
@@ -145,8 +145,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', '-v', dest='verbose', action='append_const', const=True, default=list())
 
-    parser.add_argument('--control', '-t', dest='control', action='store', default="127.0.0.1:3513")
-    parser.add_argument('--collect', '-c', dest='collect', action='store', default="127.0.0.1:3514")
+    parser.add_argument('--control', '-t', dest='control', action='store', default=ports.default_control_host())
+    parser.add_argument('--collect', '-c', dest='collect', action='store', default=ports.default_collect_host())
     parser.add_argument('--forward', '-r', dest='forward', action='store', default=None)
 
     parser.add_argument('--log-path', '-l', dest='log_path', action='store', default=None)
@@ -155,9 +155,11 @@ def main():
 
     setup_logging(options)
 
+    continue_running = True
+
     def handle_sigterm(signum, frame):
         log.info("Exiting")
-        continue_running = True
+        continue_running = False
 
     signal.signal(signal.SIGTERM, handle_sigterm)
 
@@ -170,14 +172,16 @@ def main():
     zmq_context = zmq.Context()
     poller = zmq.Poller()
 
-    log.info("Initializing control port %s", options.control)
+    control_host = ports.default_control_host(options.control)
+    log.info("Initializing control port %s", control_host)
     control_sock = zmq_context.socket(zmq.REP)
-    control_sock.bind("tcp://%s" % (options.control,))
+    control_sock.bind("tcp://%s" % (control_host,))
     poller.register(control_sock, zmq.POLLIN)
 
-    log.info("Initializing collector port %s", options.collect)
+    collect_host = ports.default_collect_host(options.collect)
+    log.info("Initializing collector port %s", collect_host)
     collector_sock = zmq_context.socket(zmq.PULL)
-    collector_sock.bind("tcp://%s" % options.collect)
+    collector_sock.bind("tcp://%s" % collect_host)
     poller.register(collector_sock, zmq.POLLIN)
 
     streamer_sock = zmq_context.socket(zmq.PUB)
@@ -187,21 +191,22 @@ def main():
 
     forward_sock = None
     if options.forward:
-        log.info("Inializing forwarding socket to %s", options.forward)
+        forward_host = ports.default_collect_host(options.forward)
+        log.info("Inializing forwarding socket to %s", forward_host)
         forward_sock = zmq_context.socket(zmq.PUSH)
         forward_sock.linger = LINGER_SHUTDOWN_MSECS
         # Note we are not setting a HWM for our forwarder, this means we'll
         # just collect and store all messages in memory until our forwarder
         # becomes available. The SWAP option which would temporarily store on
         # disk was removed in zmq 3
-        forward_sock.connect("tcp://%s" % options.forward)
+        forward_sock.connect("tcp://%s" % forward_host)
 
     stats = {'last': None, 'lag': None, 'events': {}, 'hosts': {}}
     log_files = {}
-    continue_running = True
     log.info("Starting IO Loop")
     while continue_running:
         log.debug("Poll")
+
         try:
             ready = dict(poller.poll(POLL_LOOP_TIMEOUT_MS))
         except KeyboardInterrupt, SystemExit:
@@ -214,7 +219,6 @@ def main():
                 continue
             else:
                 raise
-
 
         log.debug("Poller returned: %r", ready)
 
@@ -267,7 +271,7 @@ def main():
             control_data = control_sock.recv()
             request = msgpack.unpackb(control_data)
             log.info("Received control request: %r", request)
-            
+
             if request['cmd'] == "SOCK_STREAM":
                 control_sock.send(msgpack.packb({'port': streamer_sock_port}))
             elif request['cmd'] == "SOCK_COLLECT":

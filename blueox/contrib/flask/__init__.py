@@ -23,10 +23,12 @@ class BlueOxMiddleware(object):
     def __init__(self, app):
         self.app = app
 
-        self.blueox_host = app.config.get('BLUEOX_HOST', '127.0.0.1')
-        self.blueox_port = app.config.get('BLUEOX_PORT', 3514)
-
-        blueox.configure(self.blueox_host, self.blueox_port)
+        if 'BLUEOX_HOST' in app.config:
+            self.blueox_host = app.config['BLUEOX_HOST']
+            if self.blueox_host:
+                blueox.default_configure(self.blueox_host)
+        else:
+            blueox.default_configure()
 
         self.app.before_request(self.before_request)
         self.app.after_request(self.after_request)

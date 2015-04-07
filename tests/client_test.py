@@ -4,6 +4,7 @@ from testify import *
 import blueox
 from blueox import client
 
+
 class SimpleGrouperTest(TestCase):
     @setup
     def build_stream(self):
