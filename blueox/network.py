@@ -103,7 +103,7 @@ def send(context):
         log.exception("Failed to serialize context")
         return
 
-    if threadLocal.zmq_socket is not None:
+    if _zmq_context and threadLocal.zmq_socket is not None:
         try:
             log.debug("Sending msg")
             threadLocal.zmq_socket.send_multipart((meta_data, context_data), zmq.NOBLOCK)
