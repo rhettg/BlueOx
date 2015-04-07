@@ -8,6 +8,7 @@ import pprint
 
 import zmq
 import msgpack
+import json
 
 log = logging.getLogger('blueox.ctl')
 
@@ -45,7 +46,7 @@ def main():
     if sock in result:
         resp = msgpack.unpackb(sock.recv())
         if options.raw:
-            print resp
+            print json.dumps(resp)
         else:
             print "Host: %s" % options.host
             if resp.get('last'):
