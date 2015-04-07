@@ -118,7 +118,7 @@ For production use, you'll need to set the collection host:
 This will use the default of `127.0.0.1:3514` or respect the environment
 variable `BLUEOX_HOST`. Alternately, you can explicit configure a host:
 
-    blueox.default_configure("log-master")
+    blueox.default_configure("hostname")
 
 ### Logging module integration
 
@@ -187,7 +187,7 @@ configured via Flask ApplicationConfig object:
 
     ```python
     class ApplicationConfig(object):
-        BLUEOX_HOST = 'log-master'
+        BLUEOX_HOST = 'hostname'
         BLUEOX_NAME = 'myapp'
     ```
 
@@ -202,7 +202,7 @@ BlueOx provides middleware that can be plugged in to any Django application.
 Default settings should work fine, but BlueOx can be customized by setting
 something like the following:
 
-    BLUEOX_HOST='log-master'
+    BLUEOX_HOST='hostname'
     BLUEOX_NAME='myapp'
 
 The `request` keys are someone similiar between Tornado integration and Django,
@@ -260,7 +260,7 @@ result in any data loss as the local instances would just queue up their events.
 
 So on your local machine, you'd run:
 
-    oxd --forward=log-master
+    oxd --forward=hostname
 
 And on the master collection machine, you'd run:
 
@@ -280,7 +280,7 @@ Where `request` is the event type you're interested in.
 
 You can also connect to `oxd` and get a live streaming of log data:
 
-    oxview -H log-master --type-name="request*"
+    oxview -H hostname --type-name="request*"
 
 Note the use of '*' to indicate a prefix query for the type filter. This will
 return all events with a type that begins with 'request'
@@ -297,8 +297,8 @@ For an `oxd` forwarding to another `oxd`, the only limit is how much memory the 
 
 There are several types of network ports in use with BlueOx:
 
-  1. Control Port (default 127.0.0.1:3513)
-  1. Collection Port (default 127.0.0.1:3514)
+  1. Control Port (default 3513)
+  1. Collection Port (default 3514)
   1. Streaming Port (randomonly assigned from 35000 to 36000)
 
 Both the Control and Collection ports are configurable from the command line.
