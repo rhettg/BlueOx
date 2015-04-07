@@ -1,3 +1,4 @@
 testify
 pep8
 pyflakes
+tornado==3.2
