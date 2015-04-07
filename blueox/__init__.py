@@ -19,6 +19,7 @@ __description__ = 'A library for python-based application logging and data colle
 __url__ = 'https://github.com/rhettg/BlueOx'
 
 import logging
+import os
 
 from . import utils
 from . import network
@@ -39,6 +40,12 @@ from .timer import timeit
 log = logging.getLogger(__name__)
 
 
+ENV_VAR_HOST = 'BLUEOX_HOST'
+ENV_VAR_PORT = 'BLUEOX_PORT'
+DEFAULT_HOST = '127.0.0.1'
+DEFAULT_PORT = 3514
+
+
 def configure(host, port, recorder=None):
     """Initialize blueox
 
@@ -48,15 +55,33 @@ def configure(host, port, recorder=None):
     Currently we support logging through the network (and the configured host and port) to a blueoxd instances, or
     to the specified recorder function
     """
-    global _record_function
     if recorder:
-        context._recorder_function = recorder
+        _context_mod._recorder_function = recorder
     elif host and port:
         network.init(host, port)
-        context._recorder_function = network.send
+        _context_mod._recorder_function = network.send
     else:
         log.info("Empty blueox configuration")
-        context._recorder_function = None
+        _context_mod._recorder_function = None
+
+
+def default_configure(host=None):
+    if host is None:
+        host = os.environ.get(ENV_VAR_HOST, DEFAULT_HOST)
+
+    if ':' not in host:
+        configured_port = os.environ.get(ENV_VAR_PORT, DEFAULT_PORT)
+        host = "{}:{}".format(configured_port)
+
+    hostname, port = host.split(':')
+
+    try:
+        int_port = int(port)
+    except ValueError:
+        raise Error("Invalid value for port")
+
+    configure(hostname, int_port)
+
 
 def shutdown():
     network.close()

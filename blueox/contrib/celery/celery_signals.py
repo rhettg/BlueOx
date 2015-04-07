@@ -42,9 +42,13 @@ else:
 
 @signals.worker_process_init.connect
 def on_worker_process_init(**kwargs):
-    host = getattr(settings, 'BLUEOX_HOST', '127.0.0.1')
-    port = getattr(settings, 'BLUEOX_PORT', 3514)
-    blueox.configure(host, port)
+    if hasattr(settings, 'BLUEOX_HOST'):
+        if settings.BLUEOX_HOST:
+            blueox.default_configure(settings.BLUEOX_HOST)
+        else:
+            blueox.configure(None, None)
+    else:
+        blueox.default_configure()
 
 
 @signals.worker_shutdown.connect

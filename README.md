@@ -111,9 +111,14 @@ events would be logged.
 If BlueOx has not been explicitly configured, all the calls to BlueOx will essentially be no-ops. This is
 rather useful in testing contexts so as to not generate a bunch of bogus data.
 
-For production use, you'll need to set the collection host and port:
+For production use, you'll need to set the collection host:
 
-    blueox.configure("127.0.0.1", 3514)
+    blueox.default_configure()
+
+This will use the default of `127.0.0.1:3514` or respect the environment
+variable `BLUEOX_HOST`. Alternately, you can explicit configure a host:
+
+    blueox.default_configure("log-master")
 
 ### Logging module integration
 
@@ -191,8 +196,7 @@ BlueOx provides middleware that can be plugged in to any Django application.
 Default settings should work fine, but BlueOx can be customized by setting
 something like the following:
 
-    BLUEOX_HOST=127.0.0.1
-    BLUEOX_PORT=3514
+    BLUEOX_HOST='log-master'
     BLUEOX_NAME='myapp'
 
 The `request` keys are someone similiar between Tornado integration and Django,
