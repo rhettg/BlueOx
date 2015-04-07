@@ -50,7 +50,6 @@ def main():
     parser.add_argument('--log-path', '-l', dest='log_path', action='store', default=None)
     parser.add_argument('--pretty', '-p', dest='pretty', action='store_true', default=False)
     parser.add_argument('--group', dest='group', action='store_true', default=False)
-    parser.add_argument('--json', '-j', dest='json', action='store_true', default=False)
 
     options = parser.parse_args()
 
@@ -79,17 +78,11 @@ def main():
         out_stream = blueox.client.Grouper(out_stream)
 
     for line in out_stream:
-        if options.json:
-            if options.pretty:
-                print_pretty_header(line)
-                print json.dumps(line, sort_keys=True, indent=4, separators=(',', ': '))
-            else:
-                print json.dumps(line)
-        elif options.pretty:
+        if options.pretty:
             print_pretty_header(line)
-            pprint.pprint(line['body'])
+            print json.dumps(line, sort_keys=True, indent=4, separators=(',', ': '))
         else:
-            print line
+            print json.dumps(line)
 
 
 if __name__ == '__main__':
