@@ -15,11 +15,15 @@ import logging
 import struct
 import io
 import sys
+import os
 
 import msgpack
 import zmq
 
 log = logging.getLogger(__name__)
+
+ENV_VAR_HOST = 'BLUEOX_CLIENT_HOST'
+ENV_VAR_PORT = 'BLUEOX_CLIENT_PORT'
 
 DEFAULT_HOST = '127.0.0.1'
 DEFAULT_PORT = 3513
@@ -29,11 +33,16 @@ def default_host(host=None):
     """Build a default host string for clients
 
     This is specifically for the control port, so its NOT for use by loggers.
+    We also respect environment variables BLUEOX_CLIENT_HOST and _PORT if
+    command line options aren't your thing.
     """
+    default_host = os.environ.get(ENV_VAR_HOST, DEFAULT_HOST)
+    default_port = os.environ.get(ENV_VAR_PORT, DEFAULT_PORT)
+
     if not host:
-        host = DEFAULT_HOST
+        host = default_host
     if ':' not in host:
-        host = "{}:{}".format(host, DEFAULT_PORT)
+        host = "{}:{}".format(host, default_port)
 
     return host
 
