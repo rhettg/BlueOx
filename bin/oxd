@@ -159,7 +159,7 @@ def main():
 
     def handle_sigterm(signum, frame):
         log.info("Exiting")
-        continue_running = True
+        continue_running = False
 
     signal.signal(signal.SIGTERM, handle_sigterm)
 
