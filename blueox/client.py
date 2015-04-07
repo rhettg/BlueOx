@@ -20,13 +20,9 @@ import os
 import msgpack
 import zmq
 
+from . import ports
+
 log = logging.getLogger(__name__)
-
-ENV_VAR_HOST = 'BLUEOX_CLIENT_HOST'
-ENV_VAR_PORT = 'BLUEOX_CLIENT_PORT'
-
-DEFAULT_HOST = '127.0.0.1'
-DEFAULT_PORT = 3513
 
 
 def default_host(host=None):
@@ -36,15 +32,7 @@ def default_host(host=None):
     We also respect environment variables BLUEOX_CLIENT_HOST and _PORT if
     command line options aren't your thing.
     """
-    default_host = os.environ.get(ENV_VAR_HOST, DEFAULT_HOST)
-    default_port = os.environ.get(ENV_VAR_PORT, DEFAULT_PORT)
-
-    if not host:
-        host = default_host
-    if ':' not in host:
-        host = "{}:{}".format(host, default_port)
-
-    return host
+    return ports.default_control_host(host)
 
 
 def decode_stream(stream):

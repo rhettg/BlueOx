@@ -254,11 +254,11 @@ result in any data loss as the local instances would just queue up their events.
 
 So on your local machine, you'd run:
 
-    oxd --forward=master:3514
+    oxd --forward=log-master
 
 And on the master collection machine, you'd run:
 
-    oxd --collect="*:3514" --log-path=/var/log/blueox/
+    oxd --collect="*" --log-path=/var/log/blueox/
 
 Logs are encoded in the MsgPack format (http://msgpack.org/), so you'll need
 some tooling for doing log analysis. This is easily done with the tool
@@ -270,11 +270,11 @@ For example:
 
     oxview --log-path=/var/log/blueox --type-name="request" --start-date=20120313 --end-date=20120315
 
-Where `request` is the channel you want to examine.
+Where `request` is the event type you're interested in.
 
 You can also connect to `oxd` and get a live streaming of log data:
 
-    oxview -H localhost:3513 --type-name="request*"
+    oxview -H log-master --type-name="request*"
 
 Note the use of '*' to indicate a prefix query for the type filter. This will
 return all events with a type that begins with 'request'

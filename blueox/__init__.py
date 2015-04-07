@@ -23,6 +23,7 @@ import os
 
 from . import utils
 from . import network
+from . import ports
 from .context import (
     Context,
     set,
@@ -38,12 +39,6 @@ from .logger import LogHandler
 from .timer import timeit
 
 log = logging.getLogger(__name__)
-
-
-ENV_VAR_HOST = 'BLUEOX_HOST'
-ENV_VAR_PORT = 'BLUEOX_PORT'
-DEFAULT_HOST = '127.0.0.1'
-DEFAULT_PORT = 3514
 
 
 def configure(host, port, recorder=None):
@@ -66,13 +61,12 @@ def configure(host, port, recorder=None):
 
 
 def default_configure(host=None):
-    if host is None:
-        host = os.environ.get(ENV_VAR_HOST, DEFAULT_HOST)
+    """Configure BlueOx based on defaults
 
-    if ':' not in host:
-        configured_port = os.environ.get(ENV_VAR_PORT, DEFAULT_PORT)
-        host = "{}:{}".format(configured_port)
-
+    Accepts a connection string override in the form `localhost:3514`. Respects
+    environment variable BLUEOX_HOST
+    """
+    host = ports.default_collect_host(host)
     hostname, port = host.split(':')
 
     try:

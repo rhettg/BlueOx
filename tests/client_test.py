@@ -5,29 +5,6 @@ import blueox
 from blueox import client
 
 
-class DefaultHostTest(TestCase):
-    def test_none(self):
-        host = client.default_host()
-
-        hostname, port = host.split(':')
-        assert hostname
-        int(port)
-
-    def test_host(self):
-        host = client.default_host('master')
-
-        hostname, port = host.split(':')
-        assert_equal(hostname, 'master')
-        int(port)
-
-    def test_explicit(self):
-        host = client.default_host('master:1234')
-
-        hostname, port = host.split(':')
-        assert_equal(hostname, 'master')
-        assert_equal(int(port), 1234)
-
-
 class SimpleGrouperTest(TestCase):
     @setup
     def build_stream(self):
