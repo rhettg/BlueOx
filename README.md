@@ -167,15 +167,9 @@ size. Optionally if there are `request.user.id`, `request.version`, or
 that occur during a request are also logged to BlueOx.
 
 To setup Flask integration please take a look at the following example:
-#### Flask Configuration Example:
-    ```python
-    class ApplicationConfig(object):
-        BLUEOX_HOST = '127.0.0.1'
-        BLUEOX_PORT = 3514
-        BLUEOX_NAME = 'myapp'
-    ```
 
 #### Flask Code Example:
+
     ```python
     from flask import Flask
     from blueox.contrib.flask import BlueOxMiddleware
@@ -186,6 +180,18 @@ To setup Flask integration please take a look at the following example:
     BlueOxMiddleware(app)
     ```
 
+By default, BlueOx will log to a running oxd instance on localhost. This can be
+configured via Flask ApplicationConfig object:
+
+#### Flask Configuration Example:
+
+    ```python
+    class ApplicationConfig(object):
+        BLUEOX_HOST = 'log-master'
+        BLUEOX_NAME = 'myapp'
+    ```
+
+Setting `BLUEOX_HOST = None` will disable logging. This may be helpful in a testing context.
 
 ### Django Integration
 
