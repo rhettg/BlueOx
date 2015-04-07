@@ -10,11 +10,11 @@ blueox
 """
 
 __title__ = 'blueox'
-__version__ = '0.9.2'
+__version__ = '0.10.0'
 __author__ = 'Rhett Garber'
 __author_email__ = 'rhettg@gmail.com'
 __license__ = 'ISC'
-__copyright__ = 'Copyright 2012 Rhett Garber'
+__copyright__ = 'Copyright 2015 Rhett Garber'
 __description__ = 'A library for python-based application logging and data collection'
 __url__ = 'https://github.com/rhettg/BlueOx'
 

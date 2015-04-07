@@ -1,3 +1,15 @@
+blueox (0.10.0)
+
+  * Add a timeout value for oxingest (hemant)
+  * Middleware for Flask (bordicon)
+  * JSON output by default for command line tools (rather than python repr
+    format. This removes the --json option for oxview) (rhettg)
+  * Better defaults for host and port for command-line tools, client library
+    and configuration. (rhettg)
+  * Fix for a race condition with initializing networking. (rhettg)
+
+-- Rhett Garber <rhettg@gmail.com>  Tue, 4 Apr 2015 16:08:00 -0700
+
 blueox (0.9.2)
 
   * Fix a bug where context name that had a parent with a similiar, but not
