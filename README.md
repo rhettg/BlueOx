@@ -116,7 +116,7 @@ For production use, you'll need to set the collection host:
     blueox.default_configure()
 
 This will use the default of `127.0.0.1:3514` or respect the environment
-variable `BLUEOX_HOST`. Alternately, you can explicit configure a host:
+variable `BLUEOX_HOST`. Alternately, you can explicitly configure a host:
 
     blueox.default_configure("hostname")
 
