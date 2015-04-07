@@ -4,7 +4,6 @@ Importing this module will register signal handlers into Celery worker's runtime
 
 We also will track creation of tasks on the client side.
 """
-import logging
 import traceback
 
 import blueox
@@ -46,10 +45,6 @@ def on_worker_process_init(**kwargs):
     host = getattr(settings, 'BLUEOX_HOST', '127.0.0.1')
     port = getattr(settings, 'BLUEOX_PORT', 3514)
     blueox.configure(host, port)
-
-    handler = blueox.LogHandler()
-    handler.setLevel(logging.INFO)
-    logging.getLogger('').addHandler(handler)
 
 
 @signals.worker_shutdown.connect
