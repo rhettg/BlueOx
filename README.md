@@ -9,8 +9,7 @@ multiple hosts processing some sort of requests. You generally want to collect:
   * User activity
   * Errors (and debugging data)
 
-Use BlueOx to record that data, aggregate it to a central logging server where
-it can be written to disk.
+Use BlueOx to record that data, aggregate it to a central logging server where it can be written to disk.
 
 In addition, it's often useful to be able to plug reporting scripts into the
 logging server so as to generate live stats and reports or do ad hoc analysis.
@@ -153,6 +152,35 @@ If you are using the `autoreload` module for tornado, you should also add a
 call to `shutdown()` as a reload hook to avoid leaking file descriptors.
 
 See `tests/tornado_app.py` for an example of all this.
+
+### Flask Integration
+
+BlueOx also has Flask integration. The basic integration provides logging all
+requests, their environment data, headers, url, ip, response code, response
+size. Optionally if there are `request.user.id`, `request.version`, or
+`request.key`, they are also logged. Furthermore, all uncaught user exceptions
+that occur during a request are also logged to BlueOx.
+
+To setup Flask integration please take a look at the following example:
+#### Flask Configuration Example:
+    ```python
+    class ApplicationConfig(object):
+        BLUEOX_HOST = '127.0.0.1'
+        BLUEOX_PORT = 3514
+        BLUEOX_NAME = 'myapp'
+    ```
+
+#### Flask Code Example:
+    ```python
+    from flask import Flask
+    from blueox.contrib.flask import BlueOxMiddleware
+
+    app = Flask(__name__)
+    app.config.from_object("some.object.that.includes.blueox.config")
+
+    BlueOxMiddleware(app)
+    ```
+
 
 ### Django Integration
 
