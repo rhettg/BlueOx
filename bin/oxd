@@ -185,7 +185,7 @@ def main():
     poller.register(collector_sock, zmq.POLLIN)
 
     streamer_sock = zmq_context.socket(zmq.PUB)
-    host, _ = options.control.split(':')
+    host, _ = control_host.split(':')
     streamer_sock_port = streamer_sock.bind_to_random_port("tcp://%s" % host, min_port=35000, max_port=36000)
     log.info("Streaming port bound to %s:%d", host, streamer_sock_port)
 
@@ -275,7 +275,7 @@ def main():
             if request['cmd'] == "SOCK_STREAM":
                 control_sock.send(msgpack.packb({'port': streamer_sock_port}))
             elif request['cmd'] == "SOCK_COLLECT":
-                _, port = options.collect.split(':')
+                _, port = collect_host.split(':')
                 control_sock.send(msgpack.packb({'port': int(port)}))
             elif request['cmd'] == 'STATUS':
                 control_sock.send(msgpack.packb(build_stats(stats)))
