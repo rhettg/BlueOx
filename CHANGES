@@ -1,3 +1,9 @@
+blueox (0.10.1)
+
+  * Fixes for Flask middleware (bordicon)
+
+-- Rhett Garber <rhettg@gmail.com>  Mon, 11 May 2015 18:42:00 -0700
+
 blueox (0.10.0)
 
   * Add a timeout value for oxingest (hemant)
