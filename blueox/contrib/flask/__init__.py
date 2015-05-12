@@ -52,7 +52,7 @@ class BlueOxMiddleware(object):
 
         blueox.set('headers', headers)
         blueox.set('url', request.url)
-        blueox.set('client_ip', request.environ['REMOTE_ADDR'])
+        blueox.set('client_ip', request.environ.get('REMOTE_ADDR'))
 
     def after_request(self, response):
         if not hasattr(request, 'blueox'):
