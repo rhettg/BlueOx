@@ -59,9 +59,10 @@ def setup_logging(options):
     logging.basicConfig(level=level, format=log_format, stream=sys.stdout)
 
 class LogFileStream(object):
-    def __init__(self, log_path, name):
+    def __init__(self, log_path, name, rotate_hours):
         self.name = name
         self.log_path = log_path
+        self.rotate_hours = rotate_hours
 
         self.last_write = None
         self.last_flush = None
@@ -95,8 +96,16 @@ class LogFileStream(object):
         return True
 
     def log_file_path(self):
-        day_str = datetime.datetime.utcnow().strftime('%Y%m%d')
-        return os.path.normpath(os.path.join(self.log_path + '/', "%s/%s-%s.log" % (day_str, self.name, day_str)))
+        now = datetime.datetime.utcnow()
+        day_str = now.strftime('%Y%m%d')
+        if self.rotate_hours:
+            hour = now.hour - (now.hour % self.rotate_hours)
+            hour_str = "%.2d" % hour
+        else:
+            hour_str = ""
+
+        return os.path.normpath(os.path.join(
+            self.log_path + '/', "%s/%s-%s%s.log" % (day_str, self.name, day_str, hour_str)))
 
     def open(self):
         self.stream_filename = self.log_file_path()
@@ -150,6 +159,7 @@ def main():
     parser.add_argument('--forward', '-r', dest='forward', action='store', default=None)
 
     parser.add_argument('--log-path', '-l', dest='log_path', action='store', default=None)
+    parser.add_argument('--rotate-hours', dest='rotate_hours', action='store', type=int, default=None)
 
     options = parser.parse_args()
 
@@ -168,6 +178,10 @@ def main():
             os.makedirs(options.log_path)
         except OSError:
             pass
+
+    if options.rotate_hours is not None:
+        if options.rotate_hours < 1 or options.rotate_hours > 12:
+            parser.error("Invalid value for rotate-hours")
 
     zmq_context = zmq.Context()
     poller = zmq.Poller()
@@ -263,7 +277,7 @@ def main():
 
                 type_name = event['type']
                 if type_name not in log_files:
-                    log_files[type_name] = LogFileStream(options.log_path, type_name)
+                    log_files[type_name] = LogFileStream(options.log_path, type_name, options.rotate_hours)
 
                 log.debug("writing to %s", type_name)
                 log_files[type_name].write(event['end'], event_data)
