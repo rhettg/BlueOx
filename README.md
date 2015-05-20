@@ -266,15 +266,20 @@ And on the master collection machine, you'd run:
 
     oxd --collect="*" --log-path=/var/log/blueox/
 
+Events will be logged individually in log files for each day. You can also
+specify specify rotation hours to create logs more frequently. This is useful
+if you want to archive your logs more frequently or the size of the files
+starts to become prohibitively large for easy analysis.
+
+    oxd --log-path=/var/log/blueox --rotate-hours=2
+
 Logs are encoded in the MsgPack format (http://msgpack.org/), so you'll need
 some tooling for doing log analysis. This is easily done with the tool
 `oxview`.
 
 For example:
 
-    cat /var/log/blueox/request.120310.log | oxview
-
-    oxview --log-path=/var/log/blueox --type-name="request" --start-date=20120313 --end-date=20120315
+    cat /var/log/blueox/120310/request-120310.log | oxview
 
 Where `request` is the event type you're interested in.
 

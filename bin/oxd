@@ -159,7 +159,8 @@ def main():
     parser.add_argument('--forward', '-r', dest='forward', action='store', default=None)
 
     parser.add_argument('--log-path', '-l', dest='log_path', action='store', default=None)
-    parser.add_argument('--rotate-hours', dest='rotate_hours', action='store', type=int, default=None)
+    parser.add_argument('--rotate-hours', dest='rotate_hours', action='store', type=int, default=None,
+                        help="Indicates log files should be rotated after this many hours")
 
     options = parser.parse_args()
 
