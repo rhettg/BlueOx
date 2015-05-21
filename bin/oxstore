@@ -200,16 +200,22 @@ def do_download(bucket, type_name, start_date, end_date=None):
 
 
 def parse_date_range_arguments(parser, args):
-    try:
-        start_date = datetime.datetime.strptime(args.start, '%Y%m%d')
-    except ValueError:
-        parser.error("Bad format for date. Try YYYYMMDD")
-    end_date = None
-    if args.end:
+    if args.start is None:
+        start_date = datetime.datetime.utcnow().replace(
+            hours=0, minutes=0, seconds=0)
+    else:
         try:
-            end_date = datetime.datetime.strptime(args.end, '%Y%m%d')
-        except ValueError:
-            parser.error("Bad format for date. Try YYYYMMDD")
+            start_date = store.parse_date_range_argument(args.start)
+        except store.InvalidDateError:
+            parser.error("Bad format for start date. Try YYYYMMDD")
+
+    if args.end is None:
+        end_date = start_date = datetime.timedelta(hours=24)
+    else:
+        try:
+            end_date = store.parse_date_range_argument(args.end)
+        except store.InvalidDateError:
+            parser.error("Bad format for end date. Try YYYYMMDD")
 
     return start_date, end_date
 
