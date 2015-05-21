@@ -1,4 +1,5 @@
 testify
 pep8
 pyflakes
-tornado==3.2
+tornado==3.2 
+boto

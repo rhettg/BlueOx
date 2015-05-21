@@ -1,0 +1,304 @@
+#!/usr/bin/python
+import argparse
+import bz2
+import datetime
+import io
+import logging
+import os
+import os.path
+import re
+import socket
+import sys
+
+try:
+    import boto
+except ImportError:
+    boto = None
+
+
+DEFAULT_LOG_PATH = "/var/log/blueox"
+DEFAULT_ARCHIVE_DAYS = 7
+
+ARCHIVE = "archive"
+DOWNLOAD = "download"
+CAT = "cat"
+
+log = logging.getLogger(__name__)
+
+
+def setup_logging(verbose_count):
+    level = logging.WARNING
+    if verbose_count > 0:
+        level = logging.INFO
+    if verbose_count > 1:
+        level = logging.DEBUG
+
+    logging.basicConfig(level=level, format="%(asctime)-15s %(message)s")
+
+
+def do_archive(bucket, log_path, archive_days):
+    today_dirpath = datetime.datetime.utcnow().strftime('%Y%m%d')
+    for dirpath, dirnames, filenames in os.walk(log_path):
+        for filename in filenames:
+            full_path = os.path.join(dirpath, filename)
+
+            try:
+                log_file = LogFile.from_filename(filename)
+            except ValueError:
+                log.warning("Not a blueox log file: %s", full_path)
+                continue
+
+            log.debug("Checking out %s", full_path)
+            if full_path.endswith('.log'):
+                if os.path.basename(dirpath) < today_dirpath:
+                    log.info("Zipping %r", full_path)
+                    zip_file = bz2.BZ2File(
+                        full_path + '.bz2', 'w', io.DEFAULT_BUFFER_SIZE)
+                    with io.open(full_path, "rb") as fp:
+                        for data in fp:
+                            zip_file.write(data)
+                    zip_file.close()
+                    os.unlink(full_path)
+                    full_path += '.bz2'
+
+            if full_path.endswith('.bz2'):
+                key = boto.s3.key.Key(
+                    bucket,
+                    name=log_file.get_s3_storage_path(bzip2=True))
+
+                log.debug("Checking for key %s", key)
+                if not key.exists():
+                    with open(full_path, "r") as fp:
+                        log.info("Uploading %s", key)
+                        key.set_contents_from_file(fp)
+                        log.debug("Done Uploading %s", key)
+                else:
+                    log.debug("key %s already exists", key)
+
+    if archive_days:
+        local_archive_dirpath = ((
+            datetime.datetime.utcnow() - datetime.timedelta(archive_days))
+            .strftime('%Y%m%d'))
+        for dirpath, dirnames, filenames in os.walk(log_path):
+            if os.path.basename(dirpath) < local_archive_dirpath:
+                for filename in filenames:
+                    full_path = os.path.join(dirpath, filename)
+                    log.info("Removing %s", full_path)
+                    os.unlink(full_path)
+
+                os.rmdir(dirpath)
+    else:
+        log.info("Skipping archive removal")
+
+
+class LogFile(object):
+    """Represents a remote log file"""
+
+    def __init__(self, type_name, date):
+        self.type_name = type_name
+        self.date = date
+
+    def get_s3_prefix(self):
+        yyyymmdd = self.date.strftime('%Y%m%d')
+        return '{yyyymmdd}/{type_name}-{yyyymmdd}'.format(
+            type_name=self.type_name,
+            yyyymmdd=yyyymmdd)
+
+
+    def get_s3_storage_path(self, bzip2=False, hostname=None):
+        """Get the path we store a log file for this machine on S3
+        """
+        base_name = '{}-{}.log'.format(
+            self.get_s3_prefix(),
+            socket.gethostname())
+        if bzip2:
+            return base_name + '.bz2'
+        else:
+            return base_name
+
+    def s3_keys(self, bucket):
+        """Get all of the S3 keys matching this log file"""
+        log.debug("prefix: %s", self.get_s3_prefix())
+        return bucket.get_all_keys(prefix=self.get_s3_prefix())
+
+    def local_path(self, log_path, bzip2=False):
+        return os.path.join(
+            log_path,
+            self.date.strftime('%Y%m%d'),
+            self.filename(bzip2=bzip2))
+
+    @classmethod
+    def from_filename(cls, filename):
+        basename = os.path.basename(filename)
+        match = re.match(
+            r"^(?P<stream>.+)" # stream name like "nginx-error"
+            r"\-(?P<date>\d{8})" # date like 20140229
+            r"(?:\-.+)?" # optional server name
+            r"\.log" # .log
+            r"(?:\.bz2|\.gz)?$",
+            basename)
+        if match is None:
+            raise ValueError(basename)
+        match_info = match.groupdict()
+        a_date = datetime.datetime.strptime(match_info["date"], '%Y%m%d')
+        return LogFile(match_info["stream"], a_date)
+
+
+def inclusive_date_range(start_date, end_date):
+    if end_date is None:
+        end_date = start_date
+    while start_date <= end_date:
+        yield start_date
+        start_date += datetime.timedelta(days=1)
+
+
+def generate_log_files(type_name, start_date, end_date=None):
+    for d in inclusive_date_range(start_date, end_date):
+        log = LogFile(type_name, d)
+        yield log
+
+
+def generate_log_file_s3_keys(bucket, type_name, start_date, end_date=None):
+    for log_file in generate_log_files(
+            type_name,
+            start_date,
+            end_date=end_date):
+        for key in log_file.s3_keys(bucket):
+            log.debug(key.name)
+            yield key
+
+
+def do_cat(bucket, log_path, type_name, start_date, end_date=None):
+    "Run the cat action"
+    for a_key in generate_log_file_s3_keys(
+            bucket,
+            type_name,
+            start_date,
+            end_date=end_date):
+        if not a_key.exists():
+            continue
+        elif a_key.name.endswith(".bz2"):
+            decompressor = bz2.BZ2Decompressor()
+            for data in a_key:
+                sys.stdout.write(decompressor.decompress(data))
+        else:
+            a_key.get_file(fp=sys.stdout)
+
+
+def do_download(bucket, type_name, start_date, end_date=None):
+    "Run the download action"
+    for key in generate_log_file_s3_keys(
+            bucket,
+            type_name,
+            start_date,
+            end_date=end_date):
+        if not key.exists():
+            continue
+        filename = os.path.basename(key.name)
+        log.info("Downloading %s", filename)
+        key.get_contents_to_filename(filename)
+
+
+def parse_date_range_arguments(parser, args):
+    try:
+        start_date = datetime.datetime.strptime(args.start, '%Y%m%d')
+    except ValueError:
+        parser.error("Bad format for date. Try YYYYMMDD")
+    end_date = None
+    if args.end:
+        try:
+            end_date = datetime.datetime.strptime(args.end, '%Y%m%d')
+        except ValueError:
+            parser.error("Bad format for date. Try YYYYMMDD")
+
+    return start_date, end_date
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Manage blueox logs')
+    parser.add_argument('--verbose', '-v', action='count')
+    parser.add_argument(
+        '--bucket', '-b', action='store', required=True)
+    parser.add_argument(
+        '--log-path', '-p', action='store', default=DEFAULT_LOG_PATH)
+
+    subparsers = parser.add_subparsers(
+        dest='command', help='available commands')
+    parser_archive = subparsers.add_parser(
+        'archive', help='Archive local logs')
+    parser_archive.add_argument(
+        '--no-remove',
+        action='store_true',
+        default=False,
+        help="Upload log files, but don't remove them locally")
+
+    parser_cat = subparsers.add_parser(
+        'cat', help='output specified log to stdout')
+    parser_cat.add_argument(
+        'log_type', action='store', nargs=1, help="log type")
+    parser_cat.add_argument(
+        '--start', '-s',
+        action='store', required=True, help="start date (YYYYMMDD)")
+    parser_cat.add_argument(
+        '--end', '-e', action='store', required=False, help="end date")
+
+    parser_dnld = subparsers.add_parser(
+        'download', help='download specified log file(s)')
+    parser_dnld.add_argument(
+        'log_type', action='store', nargs=1, help="log type")
+    parser_dnld.add_argument(
+        '--start', '-s',
+        action='store', required=True, help="start date (YYYYMMDD)")
+    parser_dnld.add_argument(
+        '--end', '-e', action='store', required=False, help="end date")
+
+    args = parser.parse_args()
+
+    if boto is None:
+        parser.error("boto library not available")
+
+    required_keys = (
+        'AWS_ACCESS_KEY_ID',
+        'AWS_SECRET_ACCESS_KEY',
+        'AWS_DEFAULT_REGION')
+
+    for key in required_keys:
+        if key not in os.environ:
+            parser.error("Missing env var {}".format(key))
+
+    setup_logging(args.verbose)
+
+    conn = boto.connect_s3()
+    bucket = conn.lookup(args.bucket)
+    if not bucket:
+        parser.error("Missing bucket {}".format(args.bucket))
+
+    if args.command == ARCHIVE:
+        if args.no_remove:
+            days = None
+        else:
+            days = DEFAULT_ARCHIVE_DAYS
+        do_archive(bucket, args.log_path, days)
+    elif args.command == CAT:
+        start_date, end_date = parse_date_range_arguments(parser, args)
+        do_cat(
+            bucket,
+            args.log_path,
+            args.log_type[0],
+            start_date,
+            end_date=end_date)
+    elif args.command == DOWNLOAD:
+        start_date, end_date = parse_date_range_arguments(parser, args)
+        do_download(
+            bucket,
+            args.log_type[0],
+            start_date,
+            end_date=end_date)
+    else:
+        raise ValueError(args.command)
+
+    log.info("done")
+
+
+if __name__ == '__main__':
+    main()

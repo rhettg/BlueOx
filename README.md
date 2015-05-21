@@ -266,11 +266,18 @@ And on the master collection machine, you'd run:
 
     oxd --collect="*" --log-path=/var/log/blueox/
 
-Logs are encoded in the MsgPack format (http://msgpack.org/), so you'll need
-some tooling for doing log analysis. This is easily done with the tool
-`oxview`.
+Now you can connect to `oxd` and get a live streaming of log data:
 
-For example:
+    oxview -H hostname --type-name="request*"
+
+Note the use of '*' to indicate a prefix query for the type filter. This will
+return all events with a type that begins with 'request'
+
+Of course you'll want to access these logs once they are stored on disk. Logs
+are encoded in the MsgPack format (http://msgpack.org/), so you'll need some
+tooling for doing log analysis. This is easily done with the tool `oxview`.
+
+You access the files directly, for example:
 
     cat /var/log/blueox/request.120310.log | oxview
 
@@ -278,12 +285,28 @@ For example:
 
 Where `request` is the event type you're interested in.
 
-You can also connect to `oxd` and get a live streaming of log data:
+You can also use the provided tool to manage log files and even archive and
+retrive them from S3.
 
-    oxview -H hostname --type-name="request*"
+Keep your logs small by zipping them up:
 
-Note the use of '*' to indicate a prefix query for the type filter. This will
-return all events with a type that begins with 'request'
+    oxstore zip --log-path=/var/log/blueox
+
+If you don't need to keep everything:
+
+    oxstore prune --log-path=/var/log/blueox --keep-days=7
+
+Retrieve your log data over a time span
+
+    oxstore cat --log-path=/var/log/blueox --start=20120313 --end=20120315 request
+
+Store your zipped logs in an S3 bucket:
+
+    oxstore archive --log-path=/var/log/blueox --bucket=com.example.ox
+
+Retrieve your logs back from S3:
+
+    oxstore cat --bucket=com.example.ox --start=20120313 --end=20120315 request
 
 ### Dealing with Failure
 
