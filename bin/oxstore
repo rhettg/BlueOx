@@ -19,7 +19,7 @@ from blueox import store
 
 
 DEFAULT_LOG_PATH = "/var/log/blueox"
-DEFAULT_ARCHIVE_DAYS = 7
+DEFAULT_RETAIN_DAYS = 7
 
 ZIP_COMMAND = "zip"
 PRUNE_COMMAND = "prune"
@@ -95,7 +95,7 @@ def do_archive(bucket, log_path, archive_days):
         log.info("Skipping archive removal")
 
 
-class LogFile(object):
+class _LogFile(object):
     """Represents a remote log file"""
 
     def __init__(self, type_name, date):
@@ -213,6 +213,19 @@ def do_zip(args):
         store.zip_log_file(log_file, args.log_path)
 
 
+def do_prune(args):
+    local_archive_dirpath = ((
+        datetime.datetime.utcnow() - datetime.timedelta(args.retain_days))
+        .strftime('%Y%m%d'))
+    for dirpath, dirnames, filenames in os.walk(args.log_path):
+        if os.path.basename(dirpath) < local_archive_dirpath:
+            for filename in filenames:
+                full_path = os.path.join(dirpath, filename)
+                log.info("Removing %s", full_path)
+                os.unlink(full_path)
+
+            os.rmdir(dirpath)
+
 def parse_date_range_arguments(parser, args):
     if args.start is None:
         start_date = datetime.datetime.utcnow().replace(
@@ -245,6 +258,13 @@ def main():
         ZIP_COMMAND, help='Zip log files')
     parser_zip.add_argument(
         '--log-path', '-p', action='store', default=DEFAULT_LOG_PATH)
+
+    parser_prune = subparsers.add_parser(
+        PRUNE_COMMAND, help='Prune log files')
+    parser_prune.add_argument(
+        '--log-path', '-p', action='store', default=DEFAULT_LOG_PATH)
+    parser_prune.add_argument(
+        '--retain-days', '-d', action='store', type=int, default=DEFAULT_RETAIN_DAYS)
 
     if False:
         parser_archive = subparsers.add_parser(
@@ -304,6 +324,8 @@ def main():
 
     if args.command == ZIP_COMMAND:
         do_zip(args)
+    elif args.command == PRUNE_COMMAND:
+        do_prune(args)
     elif args.command == ARCHIVE:
         if args.no_remove:
             days = None
