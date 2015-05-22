@@ -15,6 +15,9 @@ import logging
 import datetime
 import os
 import re
+import collections
+import io
+import bz2
 
 from . import errors
 
@@ -51,6 +54,9 @@ class LogFile(object):
 
         self.dt = dt
         self.date = date or dt.date()
+
+    def get_local_file_path(self, log_path):
+        return os.path.join(log_path, self.file_path)
 
     @property
     def file_path(self):
@@ -104,3 +110,64 @@ class LogFile(object):
             dt=log_dt,
             date=log_date,
             bzip=bool(match_info['zip']))
+
+
+def list_log_files(log_path):
+    """Find and parse all the log files in the specified log path"""
+    log_files = []
+    for dirpath, dirnames, filenames in os.walk(log_path):
+        for filename in filenames:
+            full_path = os.path.join(dirpath, filename)
+
+            try:
+                log_file = LogFile.from_filename(filename)
+            except ValueError:
+                log.warning("Not a blueox log file: %s", full_path)
+                continue
+            log_files.append(log_file)
+
+    return log_files
+
+
+def filter_log_files_for_zipping(log_files):
+    """Identify unzipped log files that are approporate for zipping.
+
+    Each unique log type found should have the most recent log file unzipped
+    as it's probably still in use.
+    """
+    files_by_type = collections.defaultdict(list)
+    for f in log_files:
+        if f.bzip:
+            continue
+
+        files_by_type[f.type_name].append(f)
+
+    out_files = []
+
+    for type_files in files_by_type.values():
+        type_files.sort(key=lambda f: f.dt or datetime.datetime(f.date.year, f.date.month, f.date.day))
+
+        # We should always leave one unzipped file for each type (the likely
+        # active one)
+        out_files += type_files[:-1]
+
+    return out_files
+
+
+def zip_log_file(log_file, log_path):
+    orig_path = log_file.get_local_file_path(log_path)
+
+    log_file.bzip = True
+
+    zip_path = log_file.get_local_file_path(log_path)
+
+    # It's hard to believe, but this appears in testing to be just as fast as
+    # spawning a bzip2 process.
+    zip_file = bz2.BZ2File(
+        zip_path, 'w', io.DEFAULT_BUFFER_SIZE)
+
+    with io.open(orig_path, "rb") as fp:
+        for data in fp:
+            zip_file.write(data)
+    zip_file.close()
+    os.unlink(orig_path)
