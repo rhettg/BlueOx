@@ -19,6 +19,11 @@ import collections
 import io
 import bz2
 
+try:
+    import boto
+except ImportError:
+    boto = None
+
 from . import errors
 
 log = logging.getLogger(__name__)
@@ -57,6 +62,17 @@ class LogFile(object):
 
     def get_local_file_path(self, log_path):
         return os.path.join(log_path, self.file_path)
+
+    def s3_key(self, bucket):
+        return boto.s3.key.Key(bucket, name=self.file_path)
+
+    def build_remote(self, host):
+        return LogFile(
+            self.type_name,
+            host=host,
+            dt=self.dt,
+            date=self.date,
+            bzip=self.bzip)
 
     @property
     def file_path(self):

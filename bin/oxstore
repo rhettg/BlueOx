@@ -14,6 +14,8 @@ try:
     import boto
 except ImportError:
     boto = None
+else:
+    from boto.s3.connection import OrdinaryCallingFormat
 
 from blueox import store
 
@@ -40,59 +42,30 @@ def setup_logging(verbose_count):
     logging.basicConfig(level=level, format="%(asctime)-15s %(message)s")
 
 
-def do_archive(bucket, log_path, archive_days):
-    today_dirpath = datetime.datetime.utcnow().strftime('%Y%m%d')
-    for dirpath, dirnames, filenames in os.walk(log_path):
-        for filename in filenames:
-            full_path = os.path.join(dirpath, filename)
+def do_archive(args, bucket):
+    """Upload available local log files to S3"""
+    log_files = store.list_log_files(args.log_path)
 
-            try:
-                log_file = LogFile.from_filename(filename)
-            except ValueError:
-                log.warning("Not a blueox log file: %s", full_path)
-                continue
+    for lf in log_files:
+        log.debug("Examining %s for archive", lf.file_path)
+        if not lf.bzip:
+            continue
 
-            log.debug("Checking out %s", full_path)
-            if full_path.endswith('.log'):
-                if os.path.basename(dirpath) < today_dirpath:
-                    log.info("Zipping %r", full_path)
-                    zip_file = bz2.BZ2File(
-                        full_path + '.bz2', 'w', io.DEFAULT_BUFFER_SIZE)
-                    with io.open(full_path, "rb") as fp:
-                        for data in fp:
-                            zip_file.write(data)
-                    zip_file.close()
-                    os.unlink(full_path)
-                    full_path += '.bz2'
+        remote_lf = lf.build_remote(socket.gethostname())
 
-            if full_path.endswith('.bz2'):
-                key = boto.s3.key.Key(
-                    bucket,
-                    name=log_file.get_s3_storage_path(bzip2=True))
+        key = remote_lf.s3_key(bucket)
 
-                log.debug("Checking for key %s", key)
-                if not key.exists():
-                    with open(full_path, "r") as fp:
-                        log.info("Uploading %s", key)
-                        key.set_contents_from_file(fp)
-                        log.debug("Done Uploading %s", key)
-                else:
-                    log.debug("key %s already exists", key)
-
-    if archive_days:
-        local_archive_dirpath = ((
-            datetime.datetime.utcnow() - datetime.timedelta(archive_days))
-            .strftime('%Y%m%d'))
-        for dirpath, dirnames, filenames in os.walk(log_path):
-            if os.path.basename(dirpath) < local_archive_dirpath:
-                for filename in filenames:
-                    full_path = os.path.join(dirpath, filename)
-                    log.info("Removing %s", full_path)
-                    os.unlink(full_path)
-
-                os.rmdir(dirpath)
-    else:
-        log.info("Skipping archive removal")
+        log.debug("Checking for key %s", key)
+        # TODO: Be nice to check for size differences
+        # Might also be a good optimization to somehow download existing keys
+        # in bulk, rather than make a request for each one.
+        if not key.exists():
+            with open(lf.get_local_file_path(args.log_path), "r") as fp:
+                log.info("Uploading %s", key)
+                key.set_contents_from_file(fp)
+                log.debug("Done Uploading %s", key)
+        else:
+            log.debug("key %s already exists", key)
 
 
 class _LogFile(object):
@@ -266,17 +239,14 @@ def main():
     parser_prune.add_argument(
         '--retain-days', '-d', action='store', type=int, default=DEFAULT_RETAIN_DAYS)
 
-    if False:
-        parser_archive = subparsers.add_parser(
-            'archive', help='Archive local logs')
-        #parser_archive.add_argument(
-            #'--bucket', '-b', action='store', required=True)
-        parser_archive.add_argument(
-            '--no-remove',
-            action='store_true',
-            default=False,
-            help="Upload log files, but don't remove them locally")
+    parser_archive = subparsers.add_parser(
+        'archive', help='Archive local logs')
+    parser_archive.add_argument(
+        '--bucket', '-b', action='store', required=True)
+    parser_archive.add_argument(
+        '--log-path', '-p', action='store', default=DEFAULT_LOG_PATH)
 
+    if False:
         parser_cat = subparsers.add_parser(
             'cat', help='output specified log to stdout')
 
@@ -299,10 +269,6 @@ def main():
             '--end', '-e', action='store', required=False, help="end date")
 
 
-
-        if boto is None:
-            parser.error("boto library not available")
-
         required_keys = (
             'AWS_ACCESS_KEY_ID',
             'AWS_SECRET_ACCESS_KEY',
@@ -316,22 +282,24 @@ def main():
 
     setup_logging(args.verbose)
 
-    if False:
-        conn = boto.connect_s3()
-        bucket = conn.lookup(args.bucket)
-        if not bucket:
-            parser.error("Missing bucket {}".format(args.bucket))
-
     if args.command == ZIP_COMMAND:
         do_zip(args)
     elif args.command == PRUNE_COMMAND:
         do_prune(args)
-    elif args.command == ARCHIVE:
-        if args.no_remove:
-            days = None
-        else:
-            days = DEFAULT_ARCHIVE_DAYS
-        do_archive(bucket, args.log_path, days)
+    elif args.command == ARCHIVE_COMMAND:
+        if boto is None:
+            parser.error("boto library not available")
+
+        conn = boto.s3.connect_to_region('us-west-1')
+        # We need this to get around bugs in having a '.' in the bucket name
+        # See 
+        conn.calling_format=OrdinaryCallingFormat()
+
+        bucket = conn.get_bucket(args.bucket)
+        if not bucket:
+            parser.error("Missing bucket {}".format(args.bucket))
+
+        do_archive(args, bucket)
     elif args.command == CAT:
         start_date, end_date = parse_date_range_arguments(parser, args)
         do_cat(

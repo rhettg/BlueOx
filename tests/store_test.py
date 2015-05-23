@@ -22,7 +22,7 @@ class ParseDateArgumentTestCase(TestCase):
             store.parse_date_range_argument("foo")
 
 
-class LogFileFilePathTes(TestCase):
+class LogFileFilePathTest(TestCase):
     def test_simple_date(self):
         date = datetime.date(2015, 5, 21)
         lf = store.LogFile("foo", date=date)
@@ -63,10 +63,27 @@ class LogFileFromFilenameTest(TestCase):
         lf = store.LogFile.from_filename(file_name)
         assert_equal(lf.host, "localhost")
 
+    def test_fqdnhost(self):
+        file_name = "/var/log/20150521/foo-2015052120-ip-192-168-1-1.compute.internal.log"
+        lf = store.LogFile.from_filename(file_name)
+        assert_equal(lf.host, "ip-192-168-1-1.compute.internal")
+
     def test_bzip(self):
         file_name = "/var/log/20150521/foo-2015052120-localhost.log.bz2"
         lf = store.LogFile.from_filename(file_name)
         assert lf.bzip
+
+
+class LogFileBuildRemoteTest(TestCase):
+    def test(self):
+        lf = store.LogFile('foo', dt=datetime.datetime(2015, 5, 21, 20), bzip=True)
+
+        r_lf = lf.build_remote('log-host')
+
+        assert_equal(r_lf.host, 'log-host')
+        assert_equal(r_lf.type_name, 'foo')
+        assert_equal(r_lf.date, datetime.date(2015, 5, 21))
+        assert r_lf.bzip
 
 
 class ListLogFilesTest(TestCase):
