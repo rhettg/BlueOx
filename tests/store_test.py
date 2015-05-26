@@ -74,6 +74,18 @@ class LogFileFromFilenameTest(TestCase):
         assert lf.bzip
 
 
+class LogFileFromS3KeyTest(TestCase):
+    def test(self):
+        key = turtle.Turtle()
+        key.name = "20150521/foo-20150521-localhost.log.bz2"
+        lf = store.LogFile.from_s3_key(key)
+
+        assert_equal(lf.type_name, "foo")
+        assert_equal(lf.date, datetime.date(2015, 5, 21))
+        assert_equal(lf.host, "localhost")
+        assert_equal(lf.bzip, True)
+
+
 class LogFileBuildRemoteTest(TestCase):
     def test(self):
         lf = store.LogFile('foo', dt=datetime.datetime(2015, 5, 21, 20), bzip=True)
@@ -177,3 +189,108 @@ class ZipLogFileTest(TestCase):
         store.zip_log_file(log_file, self.log_path)
         assert log_file.bzip
         assert os.path.exists(os.path.join(self.log_path, log_file.file_path))
+
+
+class S3PrefixTest(TestCase):
+    def test(self):
+        dt = datetime.datetime(2015, 5, 21)
+        prefix = store.s3_prefix_for_date_and_type(dt, "foo")
+        assert_equal(prefix, "20150521/foo-")
+
+
+class InclusiveDateRangeTest(TestCase):
+    def test_dates(self):
+        start_dt = datetime.datetime(2015, 5, 19)
+        end_dt = datetime.datetime(2015, 5, 21)
+        dates = list(store.inclusive_date_range(start_dt, end_dt))
+
+        assert_equal(len(dates), 3)
+        assert_equal(dates[0], start_dt.date())
+        assert_equal(dates[-1], end_dt.date())
+
+    def test_boundry(self):
+        start_dt = datetime.datetime(2015, 5, 19, 20)
+        end_dt = datetime.datetime(2015, 5, 21, 3)
+        dates = list(store.inclusive_date_range(start_dt, end_dt))
+
+        assert_equal(len(dates), 3)
+        assert_equal(dates[0], start_dt.date())
+        assert_equal(dates[-1], end_dt.date())
+
+
+class FindLogFilesInS3Test(TestCase):
+    def test_empty(self):
+        start_dt = datetime.datetime(2015, 5, 19)
+        end_dt = datetime.datetime(2015, 5, 21)
+
+        bucket = turtle.Turtle()
+
+        def do_list(prefix):
+            return []
+
+        bucket.list = do_list
+
+        log_files = store.find_log_files_in_s3(bucket, "foo", start_dt, end_dt)
+        assert_equal(len(log_files), 0)
+
+    def test_date(self):
+        start_dt = datetime.datetime(2015, 5, 19)
+        end_dt = datetime.datetime(2015, 5, 21)
+
+        bucket = turtle.Turtle()
+
+        def do_list(prefix):
+            if prefix.startswith("20150519"):
+                key = turtle.Turtle()
+                key.name = "20150519/foo-20150519-localhost.log.bz2"
+                return [key]
+            else:
+                return []
+
+        bucket.list = do_list
+
+        log_files = store.find_log_files_in_s3(bucket, "foo", start_dt, end_dt)
+        assert_equal(len(log_files), 1)
+        assert_equal(log_files[0].type_name, "foo")
+
+    def test_range(self):
+        start_dt = datetime.datetime(2015, 5, 19, 1)
+        end_dt = datetime.datetime(2015, 5, 19, 3)
+
+        bucket = turtle.Turtle()
+
+        def do_list(prefix):
+            assert prefix.startswith("20150519")
+
+            return [
+                turtle.Turtle(name="20150519/foo-2015051900-localhost.log.bz2"),
+                turtle.Turtle(name="20150519/foo-2015051901-localhost.log.bz2"),
+                turtle.Turtle(name="20150519/foo-2015051902-localhost.log.bz2"),
+                turtle.Turtle(name="20150519/foo-2015051903-localhost.log.bz2"),
+                turtle.Turtle(name="20150519/foo-2015051904-localhost.log.bz2"),
+            ]
+
+        bucket.list = do_list
+
+        log_files = store.find_log_files_in_s3(bucket, "foo", start_dt, end_dt)
+        assert_equal(len(log_files), 3)
+        assert_equal(log_files[0].dt, start_dt)
+        assert_equal(log_files[-1].dt, end_dt)
+
+    def test_range_with_date_key(self):
+        start_dt = datetime.datetime(2015, 5, 19, 1)
+        end_dt = datetime.datetime(2015, 5, 19, 3)
+
+        bucket = turtle.Turtle()
+
+        def do_list(prefix):
+            assert prefix.startswith("20150519")
+
+            return [
+                turtle.Turtle(name="20150519/foo-20150519-localhost.log.bz2"),
+            ]
+
+        bucket.list = do_list
+
+        log_files = store.find_log_files_in_s3(bucket, "foo", start_dt, end_dt)
+        assert_equal(len(log_files), 1)

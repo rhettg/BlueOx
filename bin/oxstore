@@ -32,43 +32,6 @@ CAT_COMMAND = "cat"
 
 log = logging.getLogger(__name__)
 
-
-def setup_logging(verbose_count):
-    level = logging.WARNING
-    if verbose_count > 0:
-        level = logging.INFO
-    if verbose_count > 1:
-        level = logging.DEBUG
-
-    logging.basicConfig(level=level, format="%(asctime)-15s %(message)s")
-
-
-def do_upload(args, bucket):
-    """Upload available local log files to S3"""
-    log_files = store.list_log_files(args.log_path)
-
-    for lf in log_files:
-        log.debug("Examining %s for archive", lf.file_path)
-        if not lf.bzip:
-            continue
-
-        remote_lf = lf.build_remote(socket.gethostname())
-
-        key = remote_lf.s3_key(bucket)
-
-        log.debug("Checking for key %s", key)
-        # TODO: Be nice to check for size differences
-        # Might also be a good optimization to somehow download existing keys
-        # in bulk, rather than make a request for each one.
-        if not key.exists():
-            with open(lf.get_local_file_path(args.log_path), "r") as fp:
-                log.info("Uploading %s", key)
-                key.set_contents_from_file(fp)
-                log.debug("Done Uploading %s", key)
-        else:
-            log.debug("key %s already exists", key)
-
-
 class _LogFile(object):
     """Represents a remote log file"""
 
@@ -146,6 +109,52 @@ def generate_log_file_s3_keys(bucket, type_name, start_date, end_date=None):
             yield key
 
 
+def setup_logging(verbose_count):
+    level = logging.WARNING
+    if verbose_count > 0:
+        level = logging.INFO
+    if verbose_count > 1:
+        level = logging.DEBUG
+
+    logging.basicConfig(level=level, format="%(asctime)-15s %(message)s")
+
+
+def do_upload(log_path, bucket):
+    """Upload available local log files to S3"""
+    log_files = store.list_log_files(log_path)
+
+    for lf in log_files:
+        log.debug("Examining %s for archive", lf.file_path)
+        if not lf.bzip:
+            continue
+
+        remote_lf = lf.build_remote(socket.gethostname())
+
+        key = remote_lf.s3_key(bucket)
+
+        log.debug("Checking for key %s", key)
+        # TODO: Be nice to check for size differences
+        # Might also be a good optimization to somehow download existing keys
+        # in bulk, rather than make a request for each one.
+        if not key.exists():
+            with open(lf.get_local_file_path(log_path), "r") as fp:
+                log.info("Uploading %s", key)
+                key.set_contents_from_file(fp)
+                log.debug("Done Uploading %s", key)
+        else:
+            log.debug("key %s already exists", key)
+
+
+def do_download(bucket, type_name, start_dt, end_dt):
+    "Run the download action"
+    for log_file in store.find_log_files_in_s3(bucket, type_name, start_dt, end_dt):
+        if os.path.exists(log_file.file_name):
+            log.info("Skipping %s, exists", log_file.file_name)
+        else:
+            log.info("Downloading %s", log_file.file_name)
+            log_file.s3_key(bucket).get_contents_to_filename(log_file.file_name)
+
+
 def do_cat(bucket, log_path, type_name, start_date, end_date=None):
     "Run the cat action"
     for a_key in generate_log_file_s3_keys(
@@ -163,21 +172,7 @@ def do_cat(bucket, log_path, type_name, start_date, end_date=None):
             a_key.get_file(fp=sys.stdout)
 
 
-def do_download(bucket, type_name, start_date, end_date=None):
-    "Run the download action"
-    for key in generate_log_file_s3_keys(
-            bucket,
-            type_name,
-            start_date,
-            end_date=end_date):
-        if not key.exists():
-            continue
-        filename = os.path.basename(key.name)
-        log.info("Downloading %s", filename)
-        key.get_contents_to_filename(filename)
-
-
-def do_zip(args):
+def do_zip(log_path):
     log.debug("Listing log files for %r", args.log_path)
     log_files = store.list_log_files(args.log_path)
 
@@ -187,11 +182,12 @@ def do_zip(args):
         store.zip_log_file(log_file, args.log_path)
 
 
-def do_prune(args):
+def do_prune(log_path, retain_days):
     local_archive_dirpath = ((
-        datetime.datetime.utcnow() - datetime.timedelta(args.retain_days))
+        datetime.datetime.utcnow() - datetime.timedelta(retain_days))
         .strftime('%Y%m%d'))
-    for dirpath, dirnames, filenames in os.walk(args.log_path):
+
+    for dirpath, dirnames, filenames in os.walk(log_path):
         if os.path.basename(dirpath) < local_archive_dirpath:
             for filename in filenames:
                 full_path = os.path.join(dirpath, filename)
@@ -200,10 +196,11 @@ def do_prune(args):
 
             os.rmdir(dirpath)
 
+
 def parse_date_range_arguments(parser, args):
     if args.start is None:
         start_date = datetime.datetime.utcnow().replace(
-            hours=0, minutes=0, seconds=0)
+            hour=0, minute=0, second=0, microsecond=0)
     else:
         try:
             start_date = store.parse_date_range_argument(args.start)
@@ -211,7 +208,7 @@ def parse_date_range_arguments(parser, args):
             parser.error("Bad format for start date. Try YYYYMMDD")
 
     if args.end is None:
-        end_date = start_date = datetime.timedelta(hours=24)
+        end_date = start_date + datetime.timedelta(hours=24)
     else:
         try:
             end_date = store.parse_date_range_argument(args.end)
@@ -219,6 +216,33 @@ def parse_date_range_arguments(parser, args):
             parser.error("Bad format for end date. Try YYYYMMDD")
 
     return start_date, end_date
+
+
+def open_bucket(region_name, bucket_name):
+    if boto is None:
+        parser.error("boto library not available")
+
+    # TODO: What kind of error handling / documentation around AWS creds?
+    if False:
+        required_keys = (
+            'AWS_ACCESS_KEY_ID',
+            'AWS_SECRET_ACCESS_KEY',
+            'AWS_DEFAULT_REGION')
+
+        for key in required_keys:
+            if key not in os.environ:
+                parser.error("Missing env var {}".format(key))
+
+
+    # We need to specify calling_format to get around bugs in having a '.' in
+    # the bucket name
+    conn = boto.s3.connect_to_region(region_name, calling_format=OrdinaryCallingFormat())
+
+    bucket = conn.get_bucket(bucket_name)
+    if not bucket:
+        parser.error("Missing bucket {}".format(bucket_name))
+
+    return bucket
 
 
 def main():
@@ -247,6 +271,18 @@ def main():
     parser_upload.add_argument(
         '--log-path', '-p', action='store', default=DEFAULT_LOG_PATH)
 
+    parser_download = subparsers.add_parser(
+        DOWNLOAD_COMMAND, help='Download logs from S3')
+    parser_download.add_argument(
+        '--bucket', '-b', action='store', required=True)
+    parser_download.add_argument(
+        '--start', '-s',
+        action='store', help="start date (YYYYMMDD)")
+    parser_download.add_argument(
+        '--end', '-e', action='store', required=False, help="end date")
+    parser_download.add_argument(
+        'log_type', action='store', nargs=1, help="log type to download")
+
     if False:
         parser_cat = subparsers.add_parser(
             'cat', help='output specified log to stdout')
@@ -259,60 +295,32 @@ def main():
         parser_cat.add_argument(
             '--end', '-e', action='store', required=False, help="end date")
 
-        parser_dnld = subparsers.add_parser(
-            'download', help='download specified log file(s)')
-        parser_dnld.add_argument(
-            'log_type', action='store', nargs=1, help="log type")
-        parser_dnld.add_argument(
-            '--start', '-s',
-            action='store', required=True, help="start date (YYYYMMDD)")
-        parser_dnld.add_argument(
-            '--end', '-e', action='store', required=False, help="end date")
-
-
-        required_keys = (
-            'AWS_ACCESS_KEY_ID',
-            'AWS_SECRET_ACCESS_KEY',
-            'AWS_DEFAULT_REGION')
-
-        for key in required_keys:
-            if key not in os.environ:
-                parser.error("Missing env var {}".format(key))
-
     args = parser.parse_args()
 
     setup_logging(args.verbose)
 
     if args.command == ZIP_COMMAND:
-        do_zip(args)
+        do_zip(args.log_path)
     elif args.command == PRUNE_COMMAND:
-        do_prune(args)
+        do_prune(args.log_path, args.retain_days)
     elif args.command == UPLOAD_COMMAND:
-        if boto is None:
-            parser.error("boto library not available")
+        bucket = open_bucket('us-west-1', args.bucket)
 
-        conn = boto.s3.connect_to_region('us-west-1')
-        # We need this to get around bugs in having a '.' in the bucket name
-        # See 
-        conn.calling_format=OrdinaryCallingFormat()
+        do_upload(args.log_path, bucket)
+    elif args.command == DOWNLOAD_COMMAND:
+        bucket = open_bucket('us-west-1', args.bucket)
+        start_dt, end_dt = parse_date_range_arguments(parser, args)
 
-        bucket = conn.get_bucket(args.bucket)
-        if not bucket:
-            parser.error("Missing bucket {}".format(args.bucket))
-
-        do_upload(args, bucket)
-    elif args.command == CAT:
+        do_download(
+            bucket,
+            args.log_type[0],
+            start_dt,
+            end_dt)
+    elif args.command == CAT_COMMAND:
         start_date, end_date = parse_date_range_arguments(parser, args)
         do_cat(
             bucket,
             args.log_path,
-            args.log_type[0],
-            start_date,
-            end_date=end_date)
-    elif args.command == DOWNLOAD:
-        start_date, end_date = parse_date_range_arguments(parser, args)
-        do_download(
-            bucket,
             args.log_type[0],
             start_date,
             end_date=end_date)

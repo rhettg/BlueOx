@@ -75,13 +75,11 @@ class LogFile(object):
             bzip=self.bzip)
 
     @property
-    def file_path(self):
-        date_str = self.date.strftime('%Y%m%d')
-
+    def file_name(self):
         if self.dt:
             date_name_str = self.dt.strftime('%Y%m%d%H')
         else:
-            date_name_str = date_str
+            date_name_str = self.date.strftime('%Y%m%d')
 
         bzip_str = ""
         if self.bzip:
@@ -91,12 +89,18 @@ class LogFile(object):
         if self.host:
             host_str = "-{}".format(self.host)
 
-        return "{date}/{type}-{date_name}{host_str}.log{bzip}".format(
-            date=date_str,
+        return "{type}-{date_name}{host_str}.log{bzip}".format(
             type=self.type_name,
             host_str=host_str,
             date_name=date_name_str,
             bzip=bzip_str)
+
+    @property
+    def file_path(self):
+        date_str = self.date.strftime('%Y%m%d')
+        return "{date}/{filename}".format(
+            date=date_str,
+            filename=self.file_name)
 
     @classmethod
     def from_filename(cls, filename):
@@ -126,6 +130,10 @@ class LogFile(object):
             dt=log_dt,
             date=log_date,
             bzip=bool(match_info['zip']))
+
+    @classmethod
+    def from_s3_key(cls, key):
+        return cls.from_filename(key.name)
 
 
 def list_log_files(log_path):
@@ -187,3 +195,47 @@ def zip_log_file(log_file, log_path):
             zip_file.write(data)
     zip_file.close()
     os.unlink(orig_path)
+
+
+def s3_prefix_for_date_and_type(date, type_name):
+    date_str = date.strftime('%Y%m%d')
+    return "{}/{}-".format(date_str, type_name)
+
+
+def inclusive_date_range(start_dt, end_dt):
+    start_date = start_dt.date()
+    end_date = end_dt.date()
+
+    current_date = start_date
+    while current_date <= end_date:
+        yield current_date
+        current_date += datetime.timedelta(days=1)
+
+
+def find_log_files_in_s3(bucket, type_name, start_dt, end_dt):
+    prefixes = []
+    for dt in inclusive_date_range(start_dt, end_dt):
+        prefixes.append(s3_prefix_for_date_and_type(dt, type_name))
+
+    log_files = []
+    for pf in prefixes:
+        for key in bucket.list(pf):
+            try:
+                log_files.append(LogFile.from_s3_key(key))
+            except ValueError as e:
+                log.warning("S3 key %r not a log file: %r", key, e)
+                continue
+
+    out_log_files = []
+    for lf in log_files:
+        assert lf.type_name == type_name
+
+        if lf.dt is None:
+            # For log files that cover an entire day, we'll include it even if
+            # the query was for a specific time range.
+            out_log_files.append(lf)
+
+        elif lf.dt >= start_dt and lf.dt <= end_dt:
+            out_log_files.append(lf)
+
+    return out_log_files
