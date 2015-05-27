@@ -149,7 +149,7 @@ def parse_date_range_arguments(parser, args):
             parser.error("Bad format for start date. Try YYYYMMDD")
 
     if args.end is None:
-        end_date = start_date + datetime.timedelta(hours=24)
+        end_date = start_date + datetime.timedelta(hours=23, minutes=59, seconds=59)
     else:
         try:
             end_date = store.parse_date_range_argument(args.end)
