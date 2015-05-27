@@ -23,6 +23,8 @@ try:
     import boto
 except ImportError:
     boto = None
+else:
+    from boto.s3.connection import OrdinaryCallingFormat
 
 from . import errors
 
@@ -78,6 +80,48 @@ class LogFile(object):
 
     def s3_key(self, bucket):
         return boto.s3.key.Key(bucket, name=self.file_path)
+
+    def local_stream(self, log_path):
+        def stream():
+            if self.bzip:
+                decompressor = bz2.BZ2Decompressor()
+            else:
+                decompressor = None
+
+            with io.open(self.get_local_file_path(log_path), "rb") as f:
+                for data in f:
+                    if decompressor:
+                        r = decompressor.decompress(data)
+                    else:
+                        r = data
+
+                    if r is not None:
+                        yield r
+
+
+    def s3_stream(self, bucket):
+        """Create a iterable stream of data from the log file.
+
+        Automatically handles bzip decoding
+        """
+        def stream():
+            key = self.s3_key(bucket)
+
+            if self.bzip:
+                decompressor = bz2.BZ2Decompressor()
+            else:
+                decompressor = None
+
+            for data in self.s3_key(bucket):
+                if decompressor:
+                    r = decompressor.decompress(data)
+                else:
+                    r = data
+
+                if r is not None:
+                    yield r
+
+        return stream()
 
     def build_remote(self, host):
         return LogFile(
@@ -269,3 +313,17 @@ def find_log_files_in_path(log_path, type_name, start_dt, end_dt):
         out_log_files.append(lf)
 
     return out_log_files
+
+
+def open_bucket(bucket_name):
+    region_name = os.environ.get('AWS_DEFAULT_REGION', 'us-east-1')
+
+    # We need to specify calling_format to get around bugs in having a '.' in
+    # the bucket name
+    conn = boto.s3.connect_to_region(region_name, calling_format=OrdinaryCallingFormat())
+
+    bucket = conn.get_bucket(bucket_name)
+    if not bucket:
+        parser.error("Missing bucket {}".format(bucket_name))
+
+    return bucket
