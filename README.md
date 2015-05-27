@@ -294,19 +294,28 @@ Keep your logs small by zipping them up:
 
 If you don't need to keep everything:
 
-    oxstore prune --log-path=/var/log/blueox --keep-days=7
+    oxstore prune --log-path=/var/log/blueox --retain-days=7
 
-Retrieve your log data over a time span
+Retrieve your log data over a date span
 
     oxstore cat --log-path=/var/log/blueox --start=20120313 --end=20120315 request
 
 Store your zipped logs in an S3 bucket:
 
-    oxstore archive --log-path=/var/log/blueox --bucket=com.example.ox
+    oxstore upload --log-path=/var/log/blueox --bucket=example-ox --zipped-only
+
+Most usefully, you can combine your maintenance tasks into one command:
+
+    oxstore archive --log-path=/var/log/blueox --bucket=example-ox
 
 Retrieve your logs back from S3:
 
-    oxstore cat --bucket=com.example.ox --start=20120313 --end=20120315 request
+    oxstore cat --bucket=example-ox --start=20120313 --end=20120315 request
+
+Or if you want to see your local logs for the last few hours (assuming an
+hourly rotation)
+
+    oxstore cat --log-path=/var/log/blueox --start="20120313 12:00" request | oxview -p
 
 ### Dealing with Failure
 
