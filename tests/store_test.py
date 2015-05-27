@@ -75,11 +75,11 @@ class LogFileFromFilenameTest(TestCase):
         assert lf.bzip
 
 
-class LogFileFromS3KeyTest(TestCase):
+class S3LogFileFromS3KeyTest(TestCase):
     def test(self):
         key = turtle.Turtle()
         key.name = "20150521/foo-20150521-localhost.log.bz2"
-        lf = store.LogFile.from_s3_key(key)
+        lf = store.S3LogFile.from_s3_key(key)
 
         assert_equal(lf.type_name, "foo")
         assert_equal(lf.date, datetime.date(2015, 5, 21))
@@ -87,9 +87,9 @@ class LogFileFromS3KeyTest(TestCase):
         assert_equal(lf.bzip, True)
 
 
-class LogFileBuildRemoteTest(TestCase):
+class LocalLogFileBuildRemoteTest(TestCase):
     def test(self):
-        lf = store.LogFile('foo', dt=datetime.datetime(2015, 5, 21, 20), bzip=True)
+        lf = store.LocalLogFile('foo', dt=datetime.datetime(2015, 5, 21, 20), bzip=True)
 
         r_lf = lf.build_remote('log-host')
 
@@ -180,7 +180,7 @@ class ZipLogFileTest(TestCase):
         shutil.rmtree(self.log_path)
 
     def test(self):
-        log_file = store.LogFile("foo", date=datetime.date(2015, 5, 21))
+        log_file = store.LocalLogFile("foo", date=datetime.date(2015, 5, 21))
 
         full_file_path = os.path.join(self.log_path, log_file.file_path)
         os.makedirs(os.path.dirname(full_file_path))

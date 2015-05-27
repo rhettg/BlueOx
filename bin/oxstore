@@ -83,20 +83,20 @@ def do_cat_from_s3(bucket, type_name, start_dt, end_dt):
 
     log_files.sort(key=lambda f: f.sort_dt)
 
-    for lf in log_files:
-        for data in lf.s3_stream(bucket):
-            sys.stdout.write(data)
+    stream = itertools.chain(*(lf.open(bucket) for lf in log_files))
+    for data in stream:
+        sys.stdout.write(data)
 
 
 def do_cat_local(log_path, type_name, start_dt, end_dt):
     "Run the cat action against local log path"
-    log_files = find_log_files_in_path(log_path, type_name, start_dt, end_dt)
+    log_files = store.find_log_files_in_path(log_path, type_name, start_dt, end_dt)
 
     log_files.sort(key=lambda f: f.sort_dt)
 
-    for lf in log_files:
-        for data in lf.local_stream(log_path):
-            sys.stdout.write(data)
+    stream = itertools.chain(*(lf.open(log_path) for lf in log_files))
+    for data in stream:
+        sys.stdout.write(data)
 
 
 def do_zip(log_path):

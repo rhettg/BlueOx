@@ -50,7 +50,12 @@ def parse_date_range_argument(value):
 
 
 class LogFile(object):
-    """Represents a remote log file"""
+    """Represents a log file
+
+    Primarily this is useful for generation and interpretation of the bits of
+    data that form the log's filename and path. Sub-classes implement
+    functionality to actually manipulate log files.
+    """
 
     def __init__(self, type_name, host=None, dt=None, date=None, bzip=False):
         self.type_name = type_name
@@ -59,6 +64,10 @@ class LogFile(object):
         if (dt, date) == (None, None):
             raise ValueError("Needs a date")
 
+        # LogFile's may be based on just a date, or a full datetime object.
+        # This has to do with whether rotation (and thus the naming of the log
+        # files) will result in hourly offsets or just a single log for each
+        # (day, type) combination.
         self.dt = dt
         self.date = date or dt.date()
 
@@ -74,62 +83,6 @@ class LogFile(object):
                 self.date.year,
                 self.date.month,
                 self.date.day)
-
-    def get_local_file_path(self, log_path):
-        return os.path.join(log_path, self.file_path)
-
-    def s3_key(self, bucket):
-        return boto.s3.key.Key(bucket, name=self.file_path)
-
-    def local_stream(self, log_path):
-        def stream():
-            if self.bzip:
-                decompressor = bz2.BZ2Decompressor()
-            else:
-                decompressor = None
-
-            with io.open(self.get_local_file_path(log_path), "rb") as f:
-                for data in f:
-                    if decompressor:
-                        r = decompressor.decompress(data)
-                    else:
-                        r = data
-
-                    if r is not None:
-                        yield r
-
-
-    def s3_stream(self, bucket):
-        """Create a iterable stream of data from the log file.
-
-        Automatically handles bzip decoding
-        """
-        def stream():
-            key = self.s3_key(bucket)
-
-            if self.bzip:
-                decompressor = bz2.BZ2Decompressor()
-            else:
-                decompressor = None
-
-            for data in self.s3_key(bucket):
-                if decompressor:
-                    r = decompressor.decompress(data)
-                else:
-                    r = data
-
-                if r is not None:
-                    yield r
-
-        return stream()
-
-    def build_remote(self, host):
-        return LogFile(
-            self.type_name,
-            host=host,
-            dt=self.dt,
-            date=self.date,
-            bzip=self.bzip)
 
     @property
     def file_name(self):
@@ -188,9 +141,74 @@ class LogFile(object):
             date=log_date,
             bzip=bool(match_info['zip']))
 
+
+class S3LogFile(LogFile):
+    def s3_key(self, bucket):
+        return boto.s3.key.Key(bucket, name=self.file_path)
+
+    def open(self, bucket):
+        """Create a iterable stream of data from the log file.
+
+        Automatically handles bzip decoding
+        """
+        def stream():
+            key = self.s3_key(bucket)
+
+            if self.bzip:
+                decompressor = bz2.BZ2Decompressor()
+            else:
+                decompressor = None
+
+            for data in self.s3_key(bucket):
+                if decompressor:
+                    r = decompressor.decompress(data)
+                else:
+                    r = data
+
+                if r is not None:
+                    yield r
+
+        return stream()
+
     @classmethod
     def from_s3_key(cls, key):
         return cls.from_filename(key.name)
+
+
+class LocalLogFile(LogFile):
+    def get_local_file_path(self, log_path):
+        return os.path.join(log_path, self.file_path)
+
+    def open(self, log_path):
+        """Create a iterable stream of data from the log file.
+
+        Automatically handles bzip decoding
+        """
+        def stream():
+            if self.bzip:
+                decompressor = bz2.BZ2Decompressor()
+            else:
+                decompressor = None
+
+            with io.open(self.get_local_file_path(log_path), "rb") as f:
+                for data in f:
+                    if decompressor:
+                        r = decompressor.decompress(data)
+                    else:
+                        r = data
+
+                    if r is not None:
+                        yield r
+
+        return stream()
+
+    def build_remote(self, host):
+        return S3LogFile(
+            self.type_name,
+            host=host,
+            dt=self.dt,
+            date=self.date,
+            bzip=self.bzip)
 
 
 def list_log_files(log_path):
@@ -201,7 +219,7 @@ def list_log_files(log_path):
             full_path = os.path.join(dirpath, filename)
 
             try:
-                log_file = LogFile.from_filename(filename)
+                log_file = LocalLogFile.from_filename(filename)
             except ValueError:
                 log.warning("Not a blueox log file: %s", full_path)
                 continue
@@ -278,7 +296,7 @@ def find_log_files_in_s3(bucket, type_name, start_dt, end_dt):
     for pf in prefixes:
         for key in bucket.list(pf):
             try:
-                log_files.append(LogFile.from_s3_key(key))
+                log_files.append(S3LogFile.from_s3_key(key))
             except ValueError as e:
                 log.warning("S3 key %r not a log file: %r", key, e)
                 continue
