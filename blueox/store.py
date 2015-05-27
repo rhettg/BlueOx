@@ -60,6 +60,19 @@ class LogFile(object):
         self.dt = dt
         self.date = date or dt.date()
 
+    @property
+    def sort_dt(self):
+        # Log files may not represent an actual datetime, but sometimes we need
+        # to sort them like they are, preferrably incorporating the fact that
+        # users may switch from daily rotation (the default) to hourly.
+        if self.dt:
+            return self.dt
+        else:
+            return datetime.datetime(
+                self.date.year,
+                self.date.month,
+                self.date.day)
+
     def get_local_file_path(self, log_path):
         return os.path.join(log_path, self.file_path)
 
@@ -169,7 +182,7 @@ def filter_log_files_for_zipping(log_files):
     out_files = []
 
     for type_files in files_by_type.values():
-        type_files.sort(key=lambda f: f.dt or datetime.datetime(f.date.year, f.date.month, f.date.day))
+        type_files.sort(key=lambda f: f.sort_dt)
 
         # We should always leave one unzipped file for each type (the likely
         # active one)
@@ -237,5 +250,22 @@ def find_log_files_in_s3(bucket, type_name, start_dt, end_dt):
 
         elif lf.dt >= start_dt and lf.dt <= end_dt:
             out_log_files.append(lf)
+
+    return out_log_files
+
+
+def find_log_files_in_path(log_path, type_name, start_dt, end_dt):
+    log_files = list_log_files(log_path)
+    out_log_files = []
+
+    for lf in log_files:
+        if lf.dt is None:
+            if lf.date < start_dt.date() or lf.date > end_dt.date():
+                continue
+        else:
+            if lf.dt < start_dt or lf.dt > end_dt:
+                continue
+
+        out_log_files.append(lf)
 
     return out_log_files

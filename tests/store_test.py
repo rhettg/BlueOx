@@ -1,4 +1,5 @@
 from testify import *
+import io
 import datetime
 import shutil
 import tempfile
@@ -294,3 +295,47 @@ class FindLogFilesInS3Test(TestCase):
 
         log_files = store.find_log_files_in_s3(bucket, "foo", start_dt, end_dt)
         assert_equal(len(log_files), 1)
+
+
+class FindLogFilesInLocalTest(TestCase):
+    @setup
+    def build_log_directory(self):
+        self.log_path = tempfile.mkdtemp(suffix="oxtest")
+
+    @teardown
+    def remove_log_directory(self):
+        shutil.rmtree(self.log_path)
+
+    def test_empty(self):
+        start_dt = datetime.datetime(2015, 5, 19)
+        end_dt = datetime.datetime(2015, 5, 21)
+
+        log_files = store.find_log_files_in_path(self.log_path, "foo", start_dt, end_dt)
+        assert_equal(len(log_files), 0)
+
+    def test_range(self):
+        dts = [
+            datetime.datetime(2015, 5, 19, 0),
+            datetime.datetime(2015, 5, 19, 1),
+            datetime.datetime(2015, 5, 19, 2),
+            datetime.datetime(2015, 5, 19, 3),
+            datetime.datetime(2015, 5, 19, 4)]
+
+        os.makedirs(os.path.join(self.log_path, dts[0].strftime("%Y%m%d")))
+
+        for dt in dts:
+            date_str = dt.strftime('%Y%m%d')
+            dt_str = dt.strftime('%Y%m%d%H')
+            full_path = os.path.join(self.log_path, date_str, "foo-{}.log".format(dt_str))
+            with io.open(full_path, "w") as f:
+                f.write(u"hi")
+
+        start_dt = datetime.datetime(2015, 5, 19, 1)
+        end_dt = datetime.datetime(2015, 5, 19, 3)
+        log_files = store.find_log_files_in_path(self.log_path, "foo", start_dt, end_dt)
+
+        assert_equal(len(log_files), 3)
+        assert_equal(log_files[0].dt, start_dt)
+        assert_equal(log_files[-1].dt, end_dt)
+
+

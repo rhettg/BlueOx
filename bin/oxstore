@@ -79,21 +79,38 @@ def do_download(bucket, type_name, start_dt, end_dt):
             log_file.s3_key(bucket).get_contents_to_filename(log_file.file_name)
 
 
-def do_cat(bucket, log_path, type_name, start_date, end_date=None):
-    "Run the cat action"
-    for a_key in generate_log_file_s3_keys(
-            bucket,
-            type_name,
-            start_date,
-            end_date=end_date):
-        if not a_key.exists():
-            continue
-        elif a_key.name.endswith(".bz2"):
+def do_cat_from_s3(bucket, type_name, start_dt, end_dt):
+    "Run the cat action against remote logs (s3)"
+    log_files = store.find_log_files_in_s3(bucket, type_name, start_dt, end_dt)
+
+    log_files.sort(key=lambda f: f.sort_dt)
+
+    for lf in log_files:
+        if lf.bzip:
             decompressor = bz2.BZ2Decompressor()
-            for data in a_key:
+            for data in lf.s3_key(bucket):
                 sys.stdout.write(decompressor.decompress(data))
         else:
-            a_key.get_file(fp=sys.stdout)
+            lf.s3_key(bucket).get_file(fp=sys.stdout)
+
+
+def do_cat_local(log_path, type_name, start_dt, end_dt):
+    "Run the cat action against local log path"
+    log_files = find_log_files_in_path(log_path, type_name, start_dt, end_dt)
+
+    log_files.sort(key=lambda f: f.sort_dt)
+
+    for lf in log_files:
+        if lf.bzip:
+            decompressor = bz2.BZ2Decompressor()
+        else:
+            decompressor = None
+
+        with io.open(lf.get_local_file_path(log_path), "rb") as f:
+            if decompressor:
+                sys.stdout.write(decompressor.decompress(f.read()))
+            else:
+                sys.stdout.write(f.read())
 
 
 def do_zip(log_path):
@@ -207,17 +224,20 @@ def main():
     parser_download.add_argument(
         'log_type', action='store', nargs=1, help="log type to download")
 
-    if False:
-        parser_cat = subparsers.add_parser(
-            'cat', help='output specified log to stdout')
+    parser_cat = subparsers.add_parser(
+        CAT_COMMAND, help='output specified log to stdout')
 
-        parser_cat.add_argument(
-            'log_type', action='store', nargs=1, help="log type")
-        parser_cat.add_argument(
-            '--start', '-s',
-            action='store', required=True, help="start date (YYYYMMDD)")
-        parser_cat.add_argument(
-            '--end', '-e', action='store', required=False, help="end date")
+    parser_cat.add_argument(
+        'log_type', action='store', nargs=1, help="log type")
+    parser_cat.add_argument(
+        '--bucket', '-b', action='store')
+    parser_cat.add_argument(
+        '--log-path', '-p', action='store', default=DEFAULT_LOG_PATH)
+    parser_cat.add_argument(
+        '--start', '-s',
+        action='store', required=True, help="start date (YYYYMMDD)")
+    parser_cat.add_argument(
+        '--end', '-e', action='store', required=False, help="end date")
 
     args = parser.parse_args()
 
@@ -232,6 +252,7 @@ def main():
 
         do_upload(args.log_path, bucket)
     elif args.command == DOWNLOAD_COMMAND:
+        # TODO: Do something with this hardcoded bucket issue
         bucket = open_bucket('us-west-1', args.bucket)
         start_dt, end_dt = parse_date_range_arguments(parser, args)
 
@@ -241,13 +262,24 @@ def main():
             start_dt,
             end_dt)
     elif args.command == CAT_COMMAND:
-        start_date, end_date = parse_date_range_arguments(parser, args)
-        do_cat(
-            bucket,
-            args.log_path,
-            args.log_type[0],
-            start_date,
-            end_date=end_date)
+        start_dt, end_dt = parse_date_range_arguments(parser, args)
+
+        if args.bucket:
+            bucket = open_bucket('us-west-1', args.bucket)
+            do_cat_from_s3(
+                bucket,
+                args.log_type[0],
+                start_dt,
+                end_dt)
+        elif args.log_path:
+            do_cat_from_local(
+                args.log_path,
+                args.log_type[0],
+                start_dt,
+                end_dt)
+        else:
+            parser.error("Must specify a log path or bucket name")
+
     else:
         parser.error("Unknown command")
 
