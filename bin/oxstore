@@ -159,21 +159,8 @@ def parse_date_range_arguments(parser, args):
     return start_date, end_date
 
 
-def open_bucket(region_name, bucket_name):
-    if boto is None:
-        parser.error("boto library not available")
-
-    # TODO: What kind of error handling / documentation around AWS creds?
-    if False:
-        required_keys = (
-            'AWS_ACCESS_KEY_ID',
-            'AWS_SECRET_ACCESS_KEY',
-            'AWS_DEFAULT_REGION')
-
-        for key in required_keys:
-            if key not in os.environ:
-                parser.error("Missing env var {}".format(key))
-
+def open_bucket(bucket_name):
+    region_name = os.environ.get('AWS_DEFAULT_REGION', 'us-east-1')
 
     # We need to specify calling_format to get around bugs in having a '.' in
     # the bucket name
@@ -243,17 +230,23 @@ def main():
 
     setup_logging(args.verbose)
 
+    bucket = None
+    if hasattr(args, 'bucket') and args.bucket:
+        if boto is None:
+            parser.error("boto library not available")
+
+        try:
+            bucket = open_bucket(args.bucket)
+        except boto.exception.NoAuthHandlerFound:
+            parser.error("AWS Credentials not found, check your AWS environment variables")
+
     if args.command == ZIP_COMMAND:
         do_zip(args.log_path)
     elif args.command == PRUNE_COMMAND:
         do_prune(args.log_path, args.retain_days)
     elif args.command == UPLOAD_COMMAND:
-        bucket = open_bucket('us-west-1', args.bucket)
-
         do_upload(args.log_path, bucket)
     elif args.command == DOWNLOAD_COMMAND:
-        # TODO: Do something with this hardcoded bucket issue
-        bucket = open_bucket('us-west-1', args.bucket)
         start_dt, end_dt = parse_date_range_arguments(parser, args)
 
         do_download(
@@ -264,8 +257,7 @@ def main():
     elif args.command == CAT_COMMAND:
         start_dt, end_dt = parse_date_range_arguments(parser, args)
 
-        if args.bucket:
-            bucket = open_bucket('us-west-1', args.bucket)
+        if bucket:
             do_cat_from_s3(
                 bucket,
                 args.log_type[0],
