@@ -43,13 +43,13 @@ def setup_logging(verbose_count):
     logging.basicConfig(level=level, format="%(asctime)-15s %(message)s")
 
 
-def do_upload(log_path, bucket):
+def do_upload(log_path, bucket, zipped_only):
     """Upload available local log files to S3"""
     log_files = store.list_log_files(log_path)
 
     for lf in log_files:
         log.debug("Examining %s for archive", lf.file_path)
-        if not lf.bzip:
+        if zipped_only and not lf.bzip:
             continue
 
         remote_lf = lf.build_remote(socket.gethostname())
@@ -114,22 +114,25 @@ def do_cat_local(log_path, type_name, start_dt, end_dt):
 
 
 def do_zip(log_path):
-    log.debug("Listing log files for %r", args.log_path)
-    log_files = store.list_log_files(args.log_path)
+    log.debug("Listing log files for %r", log_path)
+    log_files = store.list_log_files(log_path)
 
     for log_file in store.filter_log_files_for_zipping(log_files):
         log.info("Zipping %s", log_file.file_path)
 
-        store.zip_log_file(log_file, args.log_path)
+        store.zip_log_file(log_file, log_path)
 
 
 def do_prune(log_path, retain_days):
-    local_archive_dirpath = ((
-        datetime.datetime.utcnow() - datetime.timedelta(retain_days))
-        .strftime('%Y%m%d'))
+    min_archive_date = (datetime.datetime.utcnow() - datetime.timedelta(days=retain_days)).date()
 
     for dirpath, dirnames, filenames in os.walk(log_path):
-        if os.path.basename(dirpath) < local_archive_dirpath:
+        try:
+            dir_date = datetime.datetime.strptime(os.path.basename(dirpath), '%Y%m%d').date()
+        except ValueError:
+            continue
+
+        if dir_date < min_archive_date:
             for filename in filenames:
                 full_path = os.path.join(dirpath, filename)
                 log.info("Removing %s", full_path)
@@ -198,6 +201,8 @@ def main():
         '--bucket', '-b', action='store', required=True)
     parser_upload.add_argument(
         '--log-path', '-p', action='store', default=DEFAULT_LOG_PATH)
+    parser_upload.add_argument(
+        '--zipped-only', action='store_true', default=False)
 
     parser_download = subparsers.add_parser(
         DOWNLOAD_COMMAND, help='Download logs from S3')
@@ -226,6 +231,15 @@ def main():
     parser_cat.add_argument(
         '--end', '-e', action='store', required=False, help="end date")
 
+    parser_archive = subparsers.add_parser(
+        ARCHIVE_COMMAND, help='Zip, Upload and Prune')
+    parser_archive.add_argument(
+        '--bucket', '-b', action='store', required=True)
+    parser_archive.add_argument(
+        '--log-path', '-p', action='store', default=DEFAULT_LOG_PATH)
+    parser_archive.add_argument(
+        '--retain-days', '-d', action='store', type=int, default=DEFAULT_RETAIN_DAYS)
+
     args = parser.parse_args()
 
     setup_logging(args.verbose)
@@ -245,7 +259,7 @@ def main():
     elif args.command == PRUNE_COMMAND:
         do_prune(args.log_path, args.retain_days)
     elif args.command == UPLOAD_COMMAND:
-        do_upload(args.log_path, bucket)
+        do_upload(args.log_path, bucket, args.zipped_only)
     elif args.command == DOWNLOAD_COMMAND:
         start_dt, end_dt = parse_date_range_arguments(parser, args)
 
@@ -271,6 +285,14 @@ def main():
                 end_dt)
         else:
             parser.error("Must specify a log path or bucket name")
+
+    elif args.command == ARCHIVE_COMMAND:
+
+        do_zip(args.log_path)
+
+        do_upload(args.log_path, bucket, True)
+
+        do_prune(args.log_path, args.retain_days)
 
     else:
         parser.error("Unknown command")
