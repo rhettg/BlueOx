@@ -21,6 +21,8 @@ from blueox import store
 
 DEFAULT_LOG_PATH = "/var/log/blueox"
 DEFAULT_RETAIN_DAYS = 7
+ENV_VAR_BUCKET_NAME = "BLUEOX_BUCKET"
+ENV_VAR_LOG_PATH = "BLUEOX_LOG_PATH"
 
 ZIP_COMMAND = "zip"
 PRUNE_COMMAND = "prune"
@@ -89,7 +91,7 @@ def do_cat_from_s3(bucket, type_name, start_dt, end_dt):
         sys.stdout.write(data)
 
 
-def do_cat_local(log_path, type_name, start_dt, end_dt):
+def do_cat_from_local(log_path, type_name, start_dt, end_dt):
     "Run the cat action against local log path"
     log_files = store.find_log_files_in_path(log_path, type_name, start_dt, end_dt)
 
@@ -150,6 +152,10 @@ def parse_date_range_arguments(parser, args):
 
 
 def main():
+
+    default_log_path = os.environ.get(ENV_VAR_LOG_PATH, DEFAULT_LOG_PATH)
+    default_bucket = os.environ.get(ENV_VAR_BUCKET_NAME, None)
+
     parser = argparse.ArgumentParser(description='Manage blueox logs')
     parser.add_argument('--verbose', '-v', action='count')
 
@@ -159,31 +165,29 @@ def main():
     parser_zip = subparsers.add_parser(
         ZIP_COMMAND, help='Zip log files')
     parser_zip.add_argument(
-        '--log-path', '-p', action='store', default=DEFAULT_LOG_PATH)
+        '--log-path', '-p', action='store', default=default_log_path)
 
     parser_prune = subparsers.add_parser(
         PRUNE_COMMAND, help='Prune log files')
     parser_prune.add_argument(
-        '--log-path', '-p', action='store', default=DEFAULT_LOG_PATH)
+        '--log-path', '-p', action='store', default=default_log_path)
     parser_prune.add_argument(
         '--retain-days', '-d', action='store', type=int, default=DEFAULT_RETAIN_DAYS)
 
     parser_upload = subparsers.add_parser(
         UPLOAD_COMMAND, help='Upload local logs to S3')
+    parser_upload.add_argument('--bucket', '-b', action='store', default=default_bucket)
     parser_upload.add_argument(
-        '--bucket', '-b', action='store', required=True)
-    parser_upload.add_argument(
-        '--log-path', '-p', action='store', default=DEFAULT_LOG_PATH)
+        '--log-path', '-p', action='store', default=default_log_path)
     parser_upload.add_argument(
         '--zipped-only', action='store_true', default=False)
 
     parser_download = subparsers.add_parser(
         DOWNLOAD_COMMAND, help='Download logs from S3')
-    parser_download.add_argument(
-        '--bucket', '-b', action='store', required=True)
+    parser_download.add_argument('--bucket', '-b', action='store', default=default_bucket)
     parser_download.add_argument(
         '--start', '-s',
-        action='store', help="start date (YYYYMMDD)")
+        action='store', help="start date (YYYYMMDD [HH:MM])")
     parser_download.add_argument(
         '--end', '-e', action='store', required=False, help="end date")
     parser_download.add_argument(
@@ -194,22 +198,21 @@ def main():
 
     parser_cat.add_argument(
         'log_type', action='store', nargs=1, help="log type")
+    parser_cat.add_argument('--local', action='store_true', help="Check local file system for log files")
+    parser_cat.add_argument('--bucket', '-b', action='store', default=default_bucket)
     parser_cat.add_argument(
-        '--bucket', '-b', action='store')
-    parser_cat.add_argument(
-        '--log-path', '-p', action='store', default=DEFAULT_LOG_PATH)
+        '--log-path', '-p', action='store', default=default_log_path)
     parser_cat.add_argument(
         '--start', '-s',
-        action='store', required=True, help="start date (YYYYMMDD)")
+        action='store', help="start date (YYYYMMDD [HH:MM])")
     parser_cat.add_argument(
-        '--end', '-e', action='store', required=False, help="end date")
+        '--end', '-e', action='store', help="end date")
 
     parser_archive = subparsers.add_parser(
         ARCHIVE_COMMAND, help='Zip, Upload and Prune')
+    parser_archive.add_argument('--bucket', '-b', action='store', default=default_bucket)
     parser_archive.add_argument(
-        '--bucket', '-b', action='store', required=True)
-    parser_archive.add_argument(
-        '--log-path', '-p', action='store', default=DEFAULT_LOG_PATH)
+        '--log-path', '-p', action='store', default=default_log_path)
     parser_archive.add_argument(
         '--retain-days', '-d', action='store', type=int, default=DEFAULT_RETAIN_DAYS)
 
@@ -218,12 +221,16 @@ def main():
     setup_logging(args.verbose)
 
     bucket = None
-    if hasattr(args, 'bucket') and args.bucket:
+    if hasattr(args, 'bucket'):
         if boto is None:
             parser.error("boto library not available")
 
+        bucket_name = args.bucket or os.environ.get(ENV_VAR_BUCKET_NAME, None)
+        if not bucket_name:
+            parser.error("Bucket name not provided")
+
         try:
-            bucket = store.open_bucket(args.bucket)
+            bucket = store.open_bucket(bucket_name)
         except boto.exception.NoAuthHandlerFound:
             parser.error("AWS Credentials not found, check your AWS environment variables")
 
@@ -247,20 +254,20 @@ def main():
     elif args.command == CAT_COMMAND:
         start_dt, end_dt = parse_date_range_arguments(parser, args)
 
-        if bucket:
-            do_cat_from_s3(
-                bucket,
-                args.log_type[0],
-                start_dt,
-                end_dt)
-        elif args.log_path:
+        if args.local:
             do_cat_from_local(
                 args.log_path,
                 args.log_type[0],
                 start_dt,
                 end_dt)
+        elif bucket:
+            do_cat_from_s3(
+                bucket,
+                args.log_type[0],
+                start_dt,
+                end_dt)
         else:
-            parser.error("Must specify a log path or bucket name")
+            parser.error("Bucket or --local not specified")
 
     elif args.command == ARCHIVE_COMMAND:
 
