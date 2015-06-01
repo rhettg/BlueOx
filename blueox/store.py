@@ -134,7 +134,7 @@ class LogFile(object):
         else:
             log_date = datetime.datetime.strptime(match_info["date"], '%Y%m%d').date()
 
-        return LogFile(
+        return cls(
             match_info["stream"],
             host=match_info.get('host'),
             dt=log_dt,
