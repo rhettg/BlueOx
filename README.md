@@ -320,7 +320,7 @@ Retrieve your logs back from S3:
 Or if you want to see your local logs for the last few hours (assuming an
 hourly rotation)
 
-    oxstore cat --log-path=/var/log/blueox --start="20120313 12:00" request | oxview -p
+    oxstore cat --local --log-path=/var/log/blueox --start="20120313 12:00" request | oxview -p
 
 ### Dealing with Failure
 
