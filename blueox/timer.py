@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 blueox.timer
 ~~~~~~~~
@@ -13,7 +12,9 @@ import time
 
 from . import context
 
+
 class Timer(object):
+
     def __init__(self, context, key):
         self.context = context
         self.key = key
@@ -24,6 +25,7 @@ class Timer(object):
 
     def __exit__(self, *args, **kwargs):
         self.context.set(self.key, time.time() - self.start_time)
+
 
 def timeit(key):
     return Timer(context.current_context(), key)

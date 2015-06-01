@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 blueox.store
 ~~~~~~~~
@@ -29,7 +28,6 @@ else:
 from . import errors
 
 log = logging.getLogger(__name__)
-
 
 DATE_FORMATS = ["%Y%m%d", "%Y%m%d %H:%M"]
 
@@ -79,9 +77,7 @@ class LogFile(object):
             return self.dt
         else:
             return datetime.datetime(
-                self.date.year,
-                self.date.month,
-                self.date.day)
+                self.date.year, self.date.month, self.date.day)
 
     @property
     def file_name(self):
@@ -119,8 +115,7 @@ class LogFile(object):
             r"\-(?P<date>\d{8,10})"  # date like 20140229 or 2014022910
             r"\-?(?P<host>.+)?"  # optional server name
             r"\.log"
-            r"(?P<zip>\.bz2|\.gz)?$",
-            basename)
+            r"(?P<zip>\.bz2|\.gz)?$", basename)
 
         if match is None:
             raise ValueError(basename)
@@ -131,7 +126,8 @@ class LogFile(object):
         if len(match_info['date']) == len('yyyymmddHH'):
             log_dt = datetime.datetime.strptime(match_info["date"], '%Y%m%d%H')
         else:
-            log_date = datetime.datetime.strptime(match_info["date"], '%Y%m%d').date()
+            log_date = datetime.datetime.strptime(match_info["date"],
+                                                  '%Y%m%d').date()
 
         return cls(
             match_info["stream"],
@@ -142,6 +138,7 @@ class LogFile(object):
 
 
 class S3LogFile(LogFile):
+
     def s3_key(self, bucket):
         return boto.s3.key.Key(bucket, name=self.file_path)
 
@@ -150,6 +147,7 @@ class S3LogFile(LogFile):
 
         Automatically handles bzip decoding
         """
+
         def stream():
             if self.bzip:
                 decompressor = bz2.BZ2Decompressor()
@@ -173,6 +171,7 @@ class S3LogFile(LogFile):
 
 
 class LocalLogFile(LogFile):
+
     def get_local_file_path(self, log_path):
         return os.path.join(log_path, self.file_path)
 
@@ -181,6 +180,7 @@ class LocalLogFile(LogFile):
 
         Automatically handles bzip decoding
         """
+
         def stream():
             if self.bzip:
                 decompressor = bz2.BZ2Decompressor()
@@ -245,7 +245,8 @@ def filter_log_files_for_active(log_files):
         # If that last log file is old, then it's probably not being used either.
         # We add a buffer of an hour just to make sure everything has rotated
         # away safely when this is run close to midnight.
-        cutoff_date = (datetime.datetime.utcnow() - datetime.timedelta(hours=1)).date()
+        cutoff_date = (datetime.datetime.utcnow() - datetime.timedelta(hours=1)
+                      ).date()
         if last_lf.date < cutoff_date:
             out_log_files.append(last_lf)
 
@@ -292,8 +293,7 @@ def zip_log_file(log_file, log_path):
 
     # It's hard to believe, but this appears in testing to be just as fast as
     # spawning a bzip2 process.
-    zip_file = bz2.BZ2File(
-        zip_path, 'w', io.DEFAULT_BUFFER_SIZE)
+    zip_file = bz2.BZ2File(zip_path, 'w', io.DEFAULT_BUFFER_SIZE)
 
     with io.open(orig_path, "rb") as fp:
         for data in fp:
@@ -368,6 +368,7 @@ def open_bucket(bucket_name):
 
     # We need to specify calling_format to get around bugs in having a '.' in
     # the bucket name
-    conn = boto.s3.connect_to_region(region_name, calling_format=OrdinaryCallingFormat())
+    conn = boto.s3.connect_to_region(region_name,
+                                     calling_format=OrdinaryCallingFormat())
 
     return conn.get_bucket(bucket_name)

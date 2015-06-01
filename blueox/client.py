@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 blueox.client
 ~~~~~~~~
@@ -152,6 +151,7 @@ class Grouper(object):
             ... do some processing of the event group ...
 
     """
+
     def __init__(self, stream, max_size=1000):
         self.max_size = max_size
         self.stream = stream

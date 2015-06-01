@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 blueox
 ~~~~~~~~
@@ -25,13 +24,7 @@ from . import utils
 from . import network
 from . import ports
 from .context import (
-    Context,
-    set,
-    append,
-    add,
-    context_wrap,
-    current_context,
-    find_context,
+    Context, set, append, add, context_wrap, current_context, find_context,
     clear_contexts)
 from . import context as _context_mod
 from .errors import Error

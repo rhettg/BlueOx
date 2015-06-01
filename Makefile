@@ -11,6 +11,9 @@ pep8: .gitignore
 pyflakes:
 	env/bin/pyflakes bootstrap tests
 
+yapf:
+	find blueox -name "*.py" | xargs env/bin/yapf -i --style=google
+
 dev: env/bin/activate env/.pip
 
 env/bin/activate:

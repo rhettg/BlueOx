@@ -2,6 +2,7 @@ blueox (0.11.0)
 
   * New log management command `oxstore` (rhettg)
   * Configurable hourly log rotation scheme for oxd (rhettg)
+  * Code-styles by YAPF (rhettg)
 
 -- Rhett Garber <rhettg@gmail.com>  Mon, 1 June 2015 12:32:00 -0700
 

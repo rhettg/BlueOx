@@ -19,8 +19,8 @@ try:
 except ImportError:
     revision = None
 
-
 if hasattr(signals, 'after_task_publish'):
+
     @signals.after_task_publish.connect
     def on_task_sent(sender=None, body=None, **kwargs):
         with blueox.Context('.celery.task_sent'):
@@ -29,6 +29,7 @@ if hasattr(signals, 'after_task_publish'):
             blueox.set('eta', body['eta'])
 
 else:
+
     @signals.task_sent.connect
     def on_task_sent(**kwargs):
         with blueox.Context('.celery.task_sent'):
@@ -58,7 +59,8 @@ def on_worker_shutdown(**kwargs):
 
 @signals.task_prerun.connect
 def on_task_prerun(**kwargs):
-    ctx = blueox.Context(".".join((getattr(settings, 'BLUEOX_NAME', ''), 'celery', 'task')))
+    ctx = blueox.Context(".".join(
+        (getattr(settings, 'BLUEOX_NAME', ''), 'celery', 'task')))
     ctx.start()
 
     ctx.set('task', kwargs['task'].name)

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 blueox.context
 ~~~~~~~~
@@ -28,8 +27,11 @@ log = logging.getLogger(__name__)
 # to.
 _recorder_function = None
 
+
 class Context(object):
-    __slots__ = ["name", "data", "id", "_writable", "start_time", "_sample_checks", "enabled"]
+    __slots__ = ["name", "data", "id", "_writable", "start_time",
+                 "_sample_checks", "enabled"]
+
     def __init__(self, type_name, id=None, sample=None):
         """Create a new blueox logging context
 
@@ -90,10 +92,12 @@ class Context(object):
         if parent_ctx is None:
             self.name = clean_type_name
         else:
-            parent_parts = sorted(enumerate(parent_ctx.name.split('.')), reverse=True)
+            parent_parts = sorted(enumerate(parent_ctx.name.split('.')),
+                                  reverse=True)
             for ppart_ndx, ppart in parent_parts:
                 if ppart == type_name.split('.')[1]:
-                    self.name = '.'.join(parent_ctx.name.split('.')[:ppart_ndx] + type_name.split('.')[1:])
+                    self.name = '.'.join(parent_ctx.name.split('.')[:ppart_ndx]
+                                         + type_name.split('.')[1:])
                     break
             else:
                 self.name = '.'.join((parent_ctx.name, clean_type_name))
@@ -110,7 +114,8 @@ class Context(object):
             # Generate an id if one wasn't provided and we don't have any parents
             # We're going to encode the time as the front 4 bytes so we have some order to the ids
             # that could prove useful later on by making sorting a little easier.
-            self.id = (struct.pack(">L", time.time()) + os.urandom(12)).encode('hex')
+            self.id = (struct.pack(">L", time.time()) + os.urandom(12)).encode(
+                'hex')
 
         if parent_ctx and not parent_ctx.enabled:
             self.enabled = False
@@ -197,7 +202,7 @@ class Context(object):
         _remove_context(self)
 
     def done(self):
-        self.stop() # Just be sure
+        self.stop()  # Just be sure
         if self.enabled and _recorder_function:
             _recorder_function(self)
 
@@ -214,7 +219,9 @@ class Context(object):
         self.stop()
         self.done()
 
+
 threadLocal = threading.local()
+
 
 def init_contexts():
     if not getattr(threadLocal, 'init', None):
@@ -244,8 +251,10 @@ def _add_context(context):
     threadLocal._contexts_by_name[context.name] = context
     threadLocal._contexts.append(context)
 
+
 def _get_context(name):
     return threadLocal._contexts_by_name.get(str(name))
+
 
 def _remove_context(context):
     init_contexts()
@@ -259,12 +268,14 @@ def _remove_context(context):
     except ValueError:
         pass
 
+
 def current_context():
     init_contexts()
     try:
         return threadLocal._contexts[-1]
     except IndexError:
         return None
+
 
 def top_context():
     """Return the outermost context"""
@@ -344,6 +355,7 @@ def context_wrap(type_name, sample=None):
     """Decorator for wrapping a function call with a context"""
 
     def wrapper(func):
+
         @functools.wraps(func)
         def inner(*args, **kwargs):
             with Context(type_name, sample=sample):
