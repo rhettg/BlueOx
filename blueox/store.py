@@ -39,7 +39,6 @@ class InvalidDateError(errors.Error):
 
 
 def parse_date_range_argument(value):
-    dt = None
     for fmt in DATE_FORMATS:
         try:
             return datetime.datetime.strptime(value, fmt)
@@ -116,10 +115,10 @@ class LogFile(object):
     def from_filename(cls, filename):
         basename = os.path.basename(filename)
         match = re.match(
-            r"^(?P<stream>.+)" # stream name like "nginx-error"
-            r"\-(?P<date>\d{8,10})" # date like 20140229 or 2014022910
-            r"\-?(?P<host>.+)?" # optional server name
-            r"\.log" # .log
+            r"^(?P<stream>.+)"  # stream name like "nginx-error"
+            r"\-(?P<date>\d{8,10})"  # date like 20140229 or 2014022910
+            r"\-?(?P<host>.+)?"  # optional server name
+            r"\.log"
             r"(?P<zip>\.bz2|\.gz)?$",
             basename)
 
@@ -152,8 +151,6 @@ class S3LogFile(LogFile):
         Automatically handles bzip decoding
         """
         def stream():
-            key = self.s3_key(bucket)
-
             if self.bzip:
                 decompressor = bz2.BZ2Decompressor()
             else:
@@ -340,8 +337,4 @@ def open_bucket(bucket_name):
     # the bucket name
     conn = boto.s3.connect_to_region(region_name, calling_format=OrdinaryCallingFormat())
 
-    bucket = conn.get_bucket(bucket_name)
-    if not bucket:
-        parser.error("Missing bucket {}".format(bucket_name))
-
-    return bucket
+    return conn.get_bucket(bucket_name)

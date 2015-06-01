@@ -178,14 +178,15 @@ class Context(object):
         utils.set_deep(self.data, key, existing_value + value)
 
     def to_dict(self):
-        return {'id': self.id,
-                'type': self.name,
-                'host': os.uname()[1],
-                'pid': os.getpid(),
-                'start': self.start_time,
-                'end': time.time(),
-                'body': self.data
-               }
+        return {
+            'id': self.id,
+            'type': self.name,
+            'host': os.uname()[1],
+            'pid': os.getpid(),
+            'start': self.start_time,
+            'end': time.time(),
+            'body': self.data
+        }
 
     def start(self):
         _add_context(self)

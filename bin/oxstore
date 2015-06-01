@@ -9,6 +9,7 @@ import os.path
 import re
 import socket
 import sys
+import itertools
 
 try:
     import boto
@@ -225,6 +226,9 @@ def main():
             bucket = store.open_bucket(args.bucket)
         except boto.exception.NoAuthHandlerFound:
             parser.error("AWS Credentials not found, check your AWS environment variables")
+
+        if bucket is None:
+            parser.error("Bucket not found")
 
     if args.command == ZIP_COMMAND:
         do_zip(args.log_path)

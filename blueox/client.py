@@ -12,10 +12,8 @@ This module provides utilities for writing client applications which connect or 
 """
 import collections
 import logging
-import struct
 import io
 import sys
-import os
 import itertools
 
 import msgpack
@@ -107,7 +105,7 @@ def subscribe_stream(control_host, subscribe):
         while True:
             result = dict(poller.poll(5000))
             if sock not in result:
-                 break
+                break
 
             parts = sock.recv_multipart()
             if len(parts) == 2:
