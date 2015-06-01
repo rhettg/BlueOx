@@ -225,27 +225,60 @@ def list_log_files(log_path):
     return log_files
 
 
+def filter_log_files_for_active(log_files):
+    """Filter our list of log files to remove those we expect might be active."""
+    out_log_files = []
+
+    files_by_type = collections.defaultdict(list)
+    for lf in log_files:
+        files_by_type[lf.type_name].append(lf)
+
+    for type_files in files_by_type.values():
+        type_files.sort(key=lambda f: f.sort_dt)
+
+        # We assume only the last log file in the list can be possibly be in
+        # use.
+        last_lf = type_files.pop()
+
+        out_log_files += type_files
+
+        # If that last log file is old, then it's probably not being used either.
+        # We add a buffer of an hour just to make sure everything has rotated
+        # away safely when this is run close to midnight.
+        cutoff_date = (datetime.datetime.utcnow() - datetime.timedelta(hours=1)).date()
+        if last_lf.date < cutoff_date:
+            out_log_files.append(last_lf)
+
+    return out_log_files
+
+
 def filter_log_files_for_zipping(log_files):
     """Identify unzipped log files that are approporate for zipping.
 
     Each unique log type found should have the most recent log file unzipped
     as it's probably still in use.
     """
-    files_by_type = collections.defaultdict(list)
-    for f in log_files:
-        if f.bzip:
+    out_files = []
+    for lf in filter_log_files_for_active(log_files):
+        if lf.bzip:
             continue
 
-        files_by_type[f.type_name].append(f)
+        out_files.append(lf)
 
+    return out_files
+
+
+def filter_log_files_for_uploading(log_files, zipped_only):
+    """Filter out log files that we shouldn't upload
+
+    specify zipped_only if we should only bother to upload zipped log files
+    """
     out_files = []
+    for lf in filter_log_files_for_active(log_files):
+        if zipped_only and not lf.bzip:
+            continue
 
-    for type_files in files_by_type.values():
-        type_files.sort(key=lambda f: f.sort_dt)
-
-        # We should always leave one unzipped file for each type (the likely
-        # active one)
-        out_files += type_files[:-1]
+        out_files.append(lf)
 
     return out_files
 

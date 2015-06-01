@@ -130,44 +130,63 @@ class ListLogFilesTest(TestCase):
         assert_equal(files[0].type_name, "foo")
 
 
-class FilterUnzippedTest(TestCase):
-    def test_no_zipped(self):
-        files = [store.LogFile('foo', date=datetime.date.today(), bzip=True)]
-        out_files = store.filter_log_files_for_zipping(files)
-        assert_equal(len(out_files), 0)
-
+class FilterActiveTest(TestCase):
     def test_leave_active(self):
         files = [store.LogFile('foo', date=datetime.date.today())]
-        out_files = store.filter_log_files_for_zipping(files)
+        out_files = store.filter_log_files_for_active(files)
         assert_equal(len(out_files), 0)
 
-    def test_zippable(self):
+    def test_only_yesterday(self):
         files = [
             store.LogFile('foo', date=datetime.date.today()),
             store.LogFile('bar', date=datetime.date.today()),
             store.LogFile('bar', date=datetime.date.today() - datetime.timedelta(days=1))
         ]
-        out_files = store.filter_log_files_for_zipping(files)
+        out_files = store.filter_log_files_for_active(files)
         assert_equal(len(out_files), 1)
         assert_equal(out_files[0], files[-1])
 
-    def test_zippable_hourly(self):
+    def test_hourly(self):
+        now_hourly = datetime.datetime.utcnow().replace(minute=0, second=0)
+
         files = [
-            store.LogFile('bar', dt=datetime.datetime(2015, 5, 21, 19)),
-            store.LogFile('bar', dt=datetime.datetime(2015, 5, 21, 20))
+            store.LogFile('bar', dt=now_hourly - datetime.timedelta(hours=1)),
+            store.LogFile('bar', dt=now_hourly)
         ]
-        out_files = store.filter_log_files_for_zipping(files)
+        out_files = store.filter_log_files_for_active(files)
         assert_equal(len(out_files), 1)
         assert_equal(out_files[0], files[0])
 
     def test_hourly_and_daily(self):
         files = [
             store.LogFile('bar', date=datetime.date(2015, 5, 20)),
-            store.LogFile('bar', dt=datetime.datetime(2015, 5, 21, 19)),
-            store.LogFile('bar', dt=datetime.datetime(2015, 5, 21, 20))
+            store.LogFile('bar', dt=datetime.datetime(2015, 5, 21, 20)),
+            store.LogFile('bar', dt=datetime.datetime.utcnow().replace(minute=0, second=0))
         ]
-        out_files = store.filter_log_files_for_zipping(files)
+        out_files = store.filter_log_files_for_active(files)
         assert_equal(len(out_files), 2)
+
+
+class FilterUnzippedTest(TestCase):
+    def test_no_zipped(self):
+        date = (datetime.datetime.utcnow() - datetime.timedelta(days=2)).date()
+        files = [store.LogFile('foo', date=date, bzip=True)]
+        out_files = store.filter_log_files_for_zipping(files)
+        assert_equal(len(out_files), 0)
+
+
+class FilterUploadTest(TestCase):
+    def test_only_zipped(self):
+        date = (datetime.datetime.utcnow() - datetime.timedelta(days=2)).date()
+        files = [store.LogFile('foo', date=date, bzip=False)]
+        out_files = store.filter_log_files_for_uploading(files, True)
+        assert_equal(len(out_files), 0)
+
+    def test_any(self):
+        date = (datetime.datetime.utcnow() - datetime.timedelta(days=2)).date()
+        files = [store.LogFile('foo', date=date, bzip=False)]
+        out_files = store.filter_log_files_for_uploading(files, False)
+        assert_equal(len(out_files), 1)
 
 
 class ZipLogFileTest(TestCase):
