@@ -6,7 +6,9 @@ import blueox
 
 from django.conf import settings
 
+
 class Middleware(object):
+
     def __init__(self):
         if hasattr(settings, 'BLUEOX_HOST'):
             if settings.BLUEOX_HOST:
@@ -17,14 +19,15 @@ class Middleware(object):
             blueox.default_configure()
 
     def process_request(self, request):
-        request.blueox = blueox.Context(".".join((getattr(settings, 'BLUEOX_NAME', ''), 'request')))
+        request.blueox = blueox.Context(".".join(
+            (getattr(settings, 'BLUEOX_NAME', ''), 'request')))
         request.blueox.start()
 
         blueox.set('method', request.method)
         blueox.set('path', request.path)
 
         headers = {}
-        for k,v in request.META.iteritems():
+        for k, v in request.META.iteritems():
             if k.startswith('HTTP_') or k in ('CONTENT_LENGTH', 'CONTENT_TYPE'):
                 headers[k] = v
         blueox.set('headers', headers)
@@ -67,5 +70,6 @@ class Middleware(object):
         return response
 
     def process_exception(self, request, exception):
-        blueox.set('exception', ''.join(traceback.format_exception(*sys.exc_info())))
+        blueox.set('exception',
+                   ''.join(traceback.format_exception(*sys.exc_info())))
         return None

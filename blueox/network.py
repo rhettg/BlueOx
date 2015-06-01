@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 blueox.network
 ~~~~~~~~
@@ -38,16 +37,20 @@ META_STRUCT_FMT = "!Bd64p64p"
 # wanted to avoid for a logging infrastructure, but the performance gain is
 # hard to ignore.
 META_STRUCT_VERSION = 0x3
+
+
 def check_meta_version(meta):
     value, = struct.unpack(">B", meta[0])
     if value != META_STRUCT_VERSION:
         raise ValueError(value)
+
 
 threadLocal = threading.local()
 
 # Context can be shared between threads
 _zmq_context = None
 _connect_str = None
+
 
 def init(host, port):
     global _zmq_context
@@ -56,6 +59,7 @@ def init(host, port):
     _zmq_context = zmq.Context()
     _connect_str = "tcp://%s:%d" % (host, port)
 
+
 def _thread_connect():
     if _zmq_context and not getattr(threadLocal, 'zmq_socket', None):
         threadLocal.zmq_socket = _zmq_context.socket(zmq.PUSH)
@@ -63,6 +67,7 @@ def _thread_connect():
         threadLocal.zmq_socket.linger = LINGER_SHUTDOWN_MSECS
 
         threadLocal.zmq_socket.connect(_connect_str)
+
 
 def _serialize_context(context):
     # Our sending format is made up of two messages. The first has a
@@ -75,7 +80,9 @@ def _serialize_context(context):
         if len(context_dict.get(key, "")) > 64:
             raise ValueError("Value too long: %r" % key)
 
-    meta_data = struct.pack(META_STRUCT_FMT, META_STRUCT_VERSION, context_dict['end'], context_dict['host'], context_dict['type'])
+    meta_data = struct.pack(META_STRUCT_FMT, META_STRUCT_VERSION,
+                            context_dict['end'], context_dict['host'],
+                            context_dict['type'])
 
     try:
         context_data = msgpack.packb(context_dict)
@@ -83,7 +90,8 @@ def _serialize_context(context):
         try:
             # If we fail to serialize our context, we can try again with an
             # enhanced packer (it's slower though)
-            context_data = msgpack.packb(context_dict, default=utils.msgpack_encode_default)
+            context_data = msgpack.packb(context_dict,
+                                         default=utils.msgpack_encode_default)
         except TypeError:
             log.exception("Serialization failure (not fatal, dropping data)")
 
@@ -92,6 +100,7 @@ def _serialize_context(context):
             context_data = msgpack.packb(context_dict)
 
     return meta_data, context_data
+
 
 def send(context):
     global _zmq_context
@@ -106,11 +115,13 @@ def send(context):
     if _zmq_context and threadLocal.zmq_socket is not None:
         try:
             log.debug("Sending msg")
-            threadLocal.zmq_socket.send_multipart((meta_data, context_data), zmq.NOBLOCK)
+            threadLocal.zmq_socket.send_multipart(
+                (meta_data, context_data), zmq.NOBLOCK)
         except zmq.ZMQError, e:
             log.exception("Failed sending blueox event, buffer full?")
     else:
         log.info("Skipping sending event %s", context.name)
+
 
 def close():
     global _zmq_context
@@ -120,5 +131,6 @@ def close():
         threadLocal.zmq_socket = None
 
     _zmq_context = None
+
 
 atexit.register(close)

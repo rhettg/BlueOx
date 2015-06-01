@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 blueox.logger
 ~~~~~~~~
@@ -14,6 +13,7 @@ import traceback
 
 from .context import Context
 
+
 class LogHandler(logging.Handler):
     """Handler to provide log events as blueox events.
 
@@ -22,6 +22,7 @@ class LogHandler(logging.Handler):
 
     The type name, if not specified will be something like '<my parent context>.log'
     """
+
     def __init__(self, type_name=None):
         super(LogHandler, self).__init__()
 
@@ -35,6 +36,7 @@ class LogHandler(logging.Handler):
         with Context(self.type_name or '.log') as c:
             c.set('name', record.name)
             c.set('level', record.levelname)
-            c.set('msg', record.getMessage()) 
+            c.set('msg', record.getMessage())
             if record.exc_info:
-                c.set('exception', ''.join(traceback.format_exception(*record.exc_info)))
+                c.set('exception',
+                      ''.join(traceback.format_exception(*record.exc_info)))

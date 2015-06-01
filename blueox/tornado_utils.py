@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 blueox.tornado
 ~~~~~~~~
@@ -67,6 +66,7 @@ def coroutine(func):
 
     If you don't use this wrapper, unrelated contexts may be grouped together!
     """
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
@@ -110,9 +110,11 @@ class BlueOxRequestHandlerMixin(object):
         self.blueox_ctx = None
 
 
-class SampleRequestHandler(BlueOxRequestHandlerMixin, tornado.web.RequestHandler):
+class SampleRequestHandler(BlueOxRequestHandlerMixin,
+                           tornado.web.RequestHandler):
     """Sample base request handler that provides basic information about the request.
     """
+
     def prepare(self):
         super(SampleRequestHandler, self).prepare()
         blueox.set('headers', self.request.headers)
@@ -121,9 +123,11 @@ class SampleRequestHandler(BlueOxRequestHandlerMixin, tornado.web.RequestHandler
 
     def write_error(self, status_code, **kwargs):
         if 'exc_info' in kwargs:
-            blueox.set('exception', ''.join(traceback.format_exception(*kwargs["exc_info"])))
+            blueox.set('exception',
+                       ''.join(traceback.format_exception(*kwargs["exc_info"])))
 
-        return super(SampleRequestHandler, self).write_error(status_code, **kwargs)
+        return super(SampleRequestHandler, self).write_error(status_code,
+                                                             **kwargs)
 
     def write(self, chunk):
         blueox.add('response_size', len(chunk))
@@ -135,6 +139,7 @@ class SampleRequestHandler(BlueOxRequestHandlerMixin, tornado.web.RequestHandler
 
 
 class AsyncHTTPClient(tornado.simple_httpclient.SimpleAsyncHTTPClient):
+
     def __init__(self, *args, **kwargs):
         self.blueox_name = '.httpclient'
         return super(AsyncHTTPClient, self).__init__(*args, **kwargs)
@@ -167,16 +172,20 @@ class AsyncHTTPClient(tornado.simple_httpclient.SimpleAsyncHTTPClient):
             ctx.done()
 
         if callback is None:
+
             def fetch_complete(future):
                 # This error handling is just copied from tornado.httpclient as
                 # we need to record a real HTTPError. httpclient might do the same thing
                 # again if needs to deal with the caller's callbacks.
                 exc = future.exception()
-                if isinstance(exc, tornado.httpclient.HTTPError) and exc.response is not None:
+                if isinstance(
+                    exc,
+                    tornado.httpclient.HTTPError) and exc.response is not None:
                     response = exc.response
                 elif exc is not None:
                     response = tornado.httpclient.HTTPResponse(
-                        request, 599, error=exc,
+                        request, 599,
+                        error=exc,
                         request_time=time.time() - start_time)
                 else:
                     response = future.result()
@@ -186,10 +195,13 @@ class AsyncHTTPClient(tornado.simple_httpclient.SimpleAsyncHTTPClient):
             future = super(AsyncHTTPClient, self).fetch(request)
             future.add_done_callback(fetch_complete)
         else:
+
             def callback_wrapper(response):
                 complete_context(response)
                 callback(response)
 
-            future = super(AsyncHTTPClient, self).fetch(request, callback=callback_wrapper)
+            future = super(AsyncHTTPClient,
+                           self).fetch(request,
+                                       callback=callback_wrapper)
 
         return future

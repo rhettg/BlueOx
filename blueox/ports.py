@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 blueox.ports
 ~~~~~~~~
@@ -14,7 +13,6 @@ ports, which we'd like to abstract from the user as much as possible.
 
 """
 import os
-
 
 ENV_VAR_CONTROL_HOST = 'BLUEOX_CLIENT_HOST'
 ENV_VAR_COLLECT_HOST = 'BLUEOX_HOST'

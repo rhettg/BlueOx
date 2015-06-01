@@ -45,9 +45,8 @@ class BlueOxMiddleware(object):
         headers = {}
         for k, v in request.environ.iteritems():
             if (
-                k.startswith('HTTP_') or
-                k in ('CONTENT_LENGTH', 'CONTENT_TYPE')
-            ):
+                k.startswith('HTTP_') or k in
+                ('CONTENT_LENGTH', 'CONTENT_TYPE')):
                 headers[k] = v
 
         blueox.set('headers', headers)

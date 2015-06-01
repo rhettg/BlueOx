@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 This module contains the set of Blue Ox's exceptions
 

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 blueox.utils
 ~~~~~~~~
@@ -16,6 +15,7 @@ import time
 
 
 class ParsedKey(object):
+
     def __init__(self, value):
         self.elems = []
         if '.' in value:
@@ -43,8 +43,10 @@ class ParsedKey(object):
     def __str__(self):
         return '.'.join((str(v) for v in self.elems))
 
+
 def parse_key(key):
     return ParsedKey(key)
+
 
 def get_deep(target, key, default=None):
     value = target
@@ -56,6 +58,7 @@ def get_deep(target, key, default=None):
 
     return value
 
+
 def set_deep(target, key, value):
     iter_value = target
     p_key = parse_key(key)
@@ -66,6 +69,7 @@ def set_deep(target, key, value):
         iter_value = iter_value.setdefault(elem, {})
 
     iter_value[p_key[-1]] = value
+
 
 def msgpack_encode_default(obj):
     """Extra encodings for python types into msgpack
@@ -80,5 +84,3 @@ def msgpack_encode_default(obj):
         return obj.strftime("%Y-%m-%d")
 
     raise TypeError("Unknown type: %r" % (obj,))
-
-

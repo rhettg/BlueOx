@@ -266,24 +266,61 @@ And on the master collection machine, you'd run:
 
     oxd --collect="*" --log-path=/var/log/blueox/
 
-Logs are encoded in the MsgPack format (http://msgpack.org/), so you'll need
-some tooling for doing log analysis. This is easily done with the tool
-`oxview`.
+Events will be logged individually in log files for each day. You can also
+specify specify rotation hours to create logs more frequently. This is useful
+if you want to archive your logs more frequently or the size of the files
+starts to become prohibitively large for easy analysis.
 
-For example:
+    oxd --log-path=/var/log/blueox --rotate-hours=2
 
-    cat /var/log/blueox/request.120310.log | oxview
-
-    oxview --log-path=/var/log/blueox --type-name="request" --start-date=20120313 --end-date=20120315
-
-Where `request` is the event type you're interested in.
-
-You can also connect to `oxd` and get a live streaming of log data:
+Now you can connect to `oxd` and get a live streaming of log data:
 
     oxview -H hostname --type-name="request*"
 
 Note the use of '*' to indicate a prefix query for the type filter. This will
 return all events with a type that begins with 'request'
+
+Of course you'll want to access these logs once they are stored on disk. Logs
+are encoded in the MsgPack format (http://msgpack.org/), so you'll need some
+tooling for doing log analysis. This is easily done with the tool `oxview`.
+
+You access the files directly, for example:
+
+    cat /var/log/blueox/120310/request-120310.log | oxview
+
+Where `request` is the event type you're interested in.
+
+You can also use the provided tool to manage log files and even archive and
+retrive them from S3.
+
+Keep your logs small by zipping them up:
+
+    oxstore zip --log-path=/var/log/blueox
+
+If you don't need to keep everything:
+
+    oxstore prune --log-path=/var/log/blueox --retain-days=7
+
+Retrieve your log data over a date span
+
+    oxstore cat --log-path=/var/log/blueox --start=20120313 --end=20120315 request
+
+Store your zipped logs in an S3 bucket:
+
+    oxstore upload --log-path=/var/log/blueox --bucket=example-ox --zipped-only
+
+Most usefully, you can combine your maintenance tasks into one command:
+
+    oxstore archive --log-path=/var/log/blueox --bucket=example-ox
+
+Retrieve your logs back from S3:
+
+    oxstore cat --bucket=example-ox --start=20120313 --end=20120315 request
+
+Or if you want to see your local logs for the last few hours (assuming an
+hourly rotation)
+
+    oxstore cat --log-path=/var/log/blueox --start="20120313 12:00" request | oxview -p
 
 ### Dealing with Failure
 

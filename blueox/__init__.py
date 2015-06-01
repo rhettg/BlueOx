@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """
 blueox
 ~~~~~~~~
@@ -10,7 +9,7 @@ blueox
 """
 
 __title__ = 'blueox'
-__version__ = '0.10.1'
+__version__ = '0.11.0'
 __author__ = 'Rhett Garber'
 __author_email__ = 'rhettg@gmail.com'
 __license__ = 'ISC'
@@ -25,13 +24,7 @@ from . import utils
 from . import network
 from . import ports
 from .context import (
-    Context,
-    set,
-    append,
-    add,
-    context_wrap,
-    current_context,
-    find_context,
+    Context, set, append, add, context_wrap, current_context, find_context,
     clear_contexts)
 from . import context as _context_mod
 from .errors import Error
