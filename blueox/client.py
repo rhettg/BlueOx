@@ -123,7 +123,7 @@ def stream_from_s3_store(bucket, type_name, start_dt, end_dt):
 
     streams = []
     for lf in log_files:
-        data_stream = lf.s3_stream(bucket)
+        data_stream = lf.open(bucket)
         streams.append(decode_stream(data_stream))
 
     return itertools.chain(*streams)
