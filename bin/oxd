@@ -28,6 +28,7 @@ import msgpack
 
 from blueox import network
 from blueox import ports
+from blueox import store
 
 # How long do we wait for network traffic before running our poll loop anyway.
 POLL_LOOP_TIMEOUT_MS = 1000
@@ -97,15 +98,14 @@ class LogFileStream(object):
 
     def log_file_path(self):
         now = datetime.datetime.utcnow()
-        day_str = now.strftime('%Y%m%d')
         if self.rotate_hours:
             hour = now.hour - (now.hour % self.rotate_hours)
-            hour_str = "%.2d" % hour
+            log_file = store.LocalLogFile(self.name, dt=now.replace(
+                hour=hour, minute=0, second=0, microsecond=0))
         else:
-            hour_str = ""
+            log_file = store.LocalLogFile(self.name, date=now.date())
 
-        return os.path.normpath(os.path.join(
-            self.log_path + '/', "%s/%s-%s%s.log" % (day_str, self.name, day_str, hour_str)))
+        return log_file.get_local_file_path(self.log_path)
 
     def open(self):
         self.stream_filename = self.log_file_path()
