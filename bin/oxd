@@ -1,7 +1,6 @@
 #!/bin/python
 
 # -*- coding: utf-8 -*-
-
 """
 oxd
 ~~~~~~~~
@@ -44,6 +43,7 @@ LINGER_SHUTDOWN_MSECS = 5000
 
 log = logging.getLogger("blueox.d")
 
+
 def setup_logging(options):
     if len(options.verbose) > 1:
         level = logging.DEBUG
@@ -51,7 +51,7 @@ def setup_logging(options):
         level = logging.INFO
     else:
         level = logging.WARNING
-    
+
     log_format = "%(asctime)s %(levelname)s:%(name)s: %(message)s"
 
     # We just log straight to stdout. Generally oxd is run by some process that
@@ -59,7 +59,9 @@ def setup_logging(options):
     # easy enough to add an option if it was needed by someone though.
     logging.basicConfig(level=level, format=log_format, stream=sys.stdout)
 
+
 class LogFileStream(object):
+
     def __init__(self, log_path, name, rotate_hours):
         self.name = name
         self.log_path = log_path
@@ -100,8 +102,12 @@ class LogFileStream(object):
         now = datetime.datetime.utcnow()
         if self.rotate_hours:
             hour = now.hour - (now.hour % self.rotate_hours)
-            log_file = store.LocalLogFile(self.name, dt=now.replace(
-                hour=hour, minute=0, second=0, microsecond=0))
+            log_file = store.LocalLogFile(self.name,
+                                          dt=now.replace(
+                                              hour=hour,
+                                              minute=0,
+                                              second=0,
+                                              microsecond=0))
         else:
             log_file = store.LocalLogFile(self.name, date=now.date())
 
@@ -114,7 +120,8 @@ class LogFileStream(object):
         except OSError:
             pass
 
-        log.info("Opening file stream for %s: %s", self.name, self.stream_filename)
+        log.info("Opening file stream for %s: %s", self.name,
+                 self.stream_filename)
         self.stream = io.open(self.stream_filename, "ab")
 
     def write(self, write_time, data):
@@ -130,6 +137,7 @@ class LogFileStream(object):
             self.stream.close()
             self.stream = None
             self.stream_filename = None
+
 
 def collect_stats(stats, event):
     type_name = event['type']
@@ -147,20 +155,43 @@ def collect_stats(stats, event):
     stats['hosts'].setdefault(host, {})
     stats['hosts'][host]['last'] = send_time
 
+
 def build_stats(stats):
     return stats
 
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--verbose', '-v', dest='verbose', action='append_const', const=True, default=list())
+    parser.add_argument('--verbose', '-v',
+                        dest='verbose',
+                        action='append_const',
+                        const=True,
+                        default=list())
 
-    parser.add_argument('--control', '-t', dest='control', action='store', default=ports.default_control_host())
-    parser.add_argument('--collect', '-c', dest='collect', action='store', default=ports.default_collect_host())
-    parser.add_argument('--forward', '-r', dest='forward', action='store', default=None)
+    parser.add_argument('--control', '-t',
+                        dest='control',
+                        action='store',
+                        default=ports.default_control_host())
+    parser.add_argument('--collect', '-c',
+                        dest='collect',
+                        action='store',
+                        default=ports.default_collect_host())
+    parser.add_argument('--forward', '-r',
+                        dest='forward',
+                        action='store',
+                        default=None)
 
-    parser.add_argument('--log-path', '-l', dest='log_path', action='store', default=None)
-    parser.add_argument('--rotate-hours', dest='rotate_hours', action='store', type=int, default=None,
-                        help="Indicates log files should be rotated after this many hours")
+    parser.add_argument('--log-path', '-l',
+                        dest='log_path',
+                        action='store',
+                        default=None)
+    parser.add_argument(
+        '--rotate-hours',
+        dest='rotate_hours',
+        action='store',
+        type=int,
+        default=None,
+        help="Indicates log files should be rotated after this many hours")
 
     options = parser.parse_args()
 
@@ -201,7 +232,9 @@ def main():
 
     streamer_sock = zmq_context.socket(zmq.PUB)
     host, _ = control_host.split(':')
-    streamer_sock_port = streamer_sock.bind_to_random_port("tcp://%s" % host, min_port=35000, max_port=36000)
+    streamer_sock_port = streamer_sock.bind_to_random_port("tcp://%s" % host,
+                                                           min_port=35000,
+                                                           max_port=36000)
     log.info("Streaming port bound to %s:%d", host, streamer_sock_port)
 
     forward_sock = None
@@ -237,7 +270,9 @@ def main():
 
         log.debug("Poller returned: %r", ready)
 
-        log_files = dict((name, stream) for name, stream in log_files.iteritems() if stream.poll())
+        log_files = dict((name, stream)
+                         for name, stream in log_files.iteritems()
+                         if stream.poll())
 
         if collector_sock in ready:
             try:
@@ -254,7 +289,8 @@ def main():
                 continue
 
             # See blueox.network for how this is packed.
-            _, event_time, event_host, event_type = struct.unpack(network.META_STRUCT_FMT, event_meta)
+            _, event_time, event_host, event_type = struct.unpack(
+                network.META_STRUCT_FMT, event_meta)
             event = {'type': event_type, 'end': event_time, 'host': event_host}
 
             collect_stats(stats, event)
@@ -268,17 +304,20 @@ def main():
             # If we are forwarding our data to another host, do so
             if forward_sock:
                 try:
-                    forward_sock.send(event_meta, zmq.NOBLOCK|zmq.SNDMORE)
+                    forward_sock.send(event_meta, zmq.NOBLOCK | zmq.SNDMORE)
                     forward_sock.send(event_data, zmq.NOBLOCK)
                 except zmq.ZMQError, e:
-                    log.error("Error forwarding event data, buffer possibly overflowed: %r", e)
+                    log.error(
+                        "Error forwarding event data, buffer possibly overflowed: %r",
+                        e)
 
             # We have been configured to log data to log files.
             if options.log_path:
 
                 type_name = event['type']
                 if type_name not in log_files:
-                    log_files[type_name] = LogFileStream(options.log_path, type_name, options.rotate_hours)
+                    log_files[type_name] = LogFileStream(
+                        options.log_path, type_name, options.rotate_hours)
 
                 log.debug("writing to %s", type_name)
                 log_files[type_name].write(event['end'], event_data)
@@ -308,6 +347,7 @@ def main():
         file.close()
 
     sys.exit(0)
+
 
 if __name__ == '__main__':
     main()

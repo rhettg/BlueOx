@@ -20,6 +20,7 @@ DEFAULT_HOST = "127.0.0.1:3513"
 
 log = logging.getLogger('blueox.oxstash')
 
+
 def setup_logging(options):
     if len(options.verbose) > 1:
         level = logging.DEBUG
@@ -46,33 +47,58 @@ def build_doc(options, evt):
     # This appears to be the default timestamp key logstash/kibana looks for.
     evt['@timestamp'] = timestamp.isoformat() + 'Z'
 
-    action = {
-        '_index': index,
-        '_type': evt_type,
-        '_source': evt,
-    }
+    action = {'_index': index, '_type': evt_type, '_source': evt,}
 
     return elasticsearch.helpers.expand_action(action)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Send blueox log events to elasticsearch")
-    parser.add_argument('--verbose', '-v', dest='verbose', action='append_const', const=True, default=list())
+    parser = argparse.ArgumentParser(
+        description="Send blueox log events to elasticsearch")
+    parser.add_argument('--verbose', '-v',
+                        dest='verbose',
+                        action='append_const',
+                        const=True,
+                        default=list())
 
-    parser.add_argument('--type-name', '-n', dest='type_name', action='store', default=None,
-                        help="What event types to display. Can end with '*' for prefix matches.")
-    parser.add_argument('--host', '-H', dest='host', action='store', default=None)
-    parser.add_argument('--log-path', '-l', dest='log_path', action='store', default=None)
-    parser.add_argument('--elasticsearch', '-e', action='append', default=[],
-                        help="Elasticsearch nodes to connect to (default: localhost:9200)")
-    parser.add_argument('--index_name', '-i', action='store', default=None,
-                       help="Elasticsearch index to use for events")
-    parser.add_argument('--index_base', '-p', action='store', default="blueox",
-                       help="Elasticsearch index to use, based on date")
-    parser.add_argument('--chunk_size', action='store', type=int, default=500,
-                       help="How many events to do together in a bulk operation")
-    parser.add_argument('--request_timeout', action='store', type=int, default=10,
-                       help="Read timeout for bulk api")
+    parser.add_argument(
+        '--type-name', '-n',
+        dest='type_name',
+        action='store',
+        default=None,
+        help="What event types to display. Can end with '*' for prefix matches.")
+    parser.add_argument('--host', '-H',
+                        dest='host',
+                        action='store',
+                        default=None)
+    parser.add_argument('--log-path', '-l',
+                        dest='log_path',
+                        action='store',
+                        default=None)
+    parser.add_argument(
+        '--elasticsearch', '-e',
+        action='append',
+        default=[],
+        help="Elasticsearch nodes to connect to (default: localhost:9200)")
+    parser.add_argument('--index_name', '-i',
+                        action='store',
+                        default=None,
+                        help="Elasticsearch index to use for events")
+    parser.add_argument('--index_base', '-p',
+                        action='store',
+                        default="blueox",
+                        help="Elasticsearch index to use, based on date")
+    parser.add_argument(
+        '--chunk_size',
+        action='store',
+        type=int,
+        default=500,
+        help="How many events to do together in a bulk operation")
+    parser.add_argument('--request_timeout',
+                        action='store',
+                        type=int,
+                        default=10,
+                        help="Read timeout for bulk api")
 
     options = parser.parse_args()
 
@@ -104,7 +130,8 @@ def main():
     bulk_streamer = elasticsearch.helpers.streaming_bulk(
         es, out_stream,
         request_timeout=request_timeout,
-        chunk_size=options.chunk_size, expand_action_callback=action_callback)
+        chunk_size=options.chunk_size,
+        expand_action_callback=action_callback)
 
     for result in bulk_streamer:
         batch_ok, item = result

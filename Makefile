@@ -13,6 +13,7 @@ pyflakes:
 
 yapf:
 	find blueox -name "*.py" | xargs env/bin/yapf -i --style=google
+	find bin | xargs env/bin/yapf -i --style=google
 
 dev: env/bin/activate env/.pip
 
