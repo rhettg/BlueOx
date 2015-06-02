@@ -43,13 +43,16 @@ def open_watcher(file_def, type_name=None):
     if ':' in file_def:
         name, file_path = file_def.split(':')
     else:
-        name = type_name or "oxingest.".format(os.path.basename(file_def).split('.')[0])
+        name = type_name or "oxingest.".format(
+            os.path.basename(file_def).split('.')[0])
         file_path = file_def
 
     if not os.path.exists(file_path):
         raise Exception("File not found")
 
-    p = subprocess.Popen("tail -n 0 -F {}".format(file_path), shell=True, stdout=subprocess.PIPE)
+    p = subprocess.Popen("tail -n 0 -F {}".format(file_path),
+                         shell=True,
+                         stdout=subprocess.PIPE)
 
     # Set non-blocking, just in case our select loop lies to us.
     fl = fcntl.fcntl(p.stdout, fcntl.F_GETFL)
@@ -60,9 +63,18 @@ def open_watcher(file_def, type_name=None):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('type_name', action='store', nargs="?", help="Type name to use for events")
-    parser.add_argument('--host', '-H', dest='host', action='store', default="127.0.0.1:3514")
-    parser.add_argument('--file', '-F', dest='files', action='append', help="Log file to tail for input")
+    parser.add_argument('type_name',
+                        action='store',
+                        nargs="?",
+                        help="Type name to use for events")
+    parser.add_argument('--host', '-H',
+                        dest='host',
+                        action='store',
+                        default="127.0.0.1:3514")
+    parser.add_argument('--file', '-F',
+                        dest='files',
+                        action='append',
+                        help="Log file to tail for input")
 
     args = parser.parse_args()
 
@@ -92,7 +104,7 @@ def main():
                 break
 
             if err_fps:
-                print >>sys.stderr, "Error on select"
+                print >> sys.stderr, "Error on select"
                 done = True
                 break
 
@@ -104,7 +116,8 @@ def main():
             exit = check_exits(watch)
             if exit:
                 name, process = exit
-                print >>sys.stderr, "Watch for {}: exited {}".format(name, process.returncode)
+                print >> sys.stderr, "Watch for {}: exited {}".format(
+                    name, process.returncode)
                 done = True
 
         print "Terminating..."
