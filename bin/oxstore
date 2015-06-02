@@ -10,6 +10,9 @@ import re
 import socket
 import sys
 import itertools
+import errno
+import time
+
 
 try:
     import boto
@@ -42,6 +45,24 @@ def setup_logging(verbose_count):
         level = logging.DEBUG
 
     logging.basicConfig(level=level, format="%(asctime)-15s %(message)s")
+
+
+def lock_file(file_name):
+    try:
+        return os.open(file_name, os.O_WRONLY|os.O_CREAT|os.O_EXLOCK|os.O_NDELAY)
+    except OSError as e:
+        if e.errno == errno.EAGAIN:
+            return None
+        elif e.errno == errno.ENOENT:
+            log.error("Failed to open %r: %r", file_name, e)
+            return None
+        else:
+            raise
+
+
+def unlock_file(fd, file_name):
+    os.close(fd)
+    os.unlink(file_name)
 
 
 def do_upload(log_path, bucket, zipped_only):
@@ -152,12 +173,12 @@ def parse_date_range_arguments(parser, args):
 
 
 def main():
-
     default_log_path = os.environ.get(ENV_VAR_LOG_PATH, DEFAULT_LOG_PATH)
     default_bucket = os.environ.get(ENV_VAR_BUCKET_NAME, None)
 
     parser = argparse.ArgumentParser(description='Manage blueox logs')
     parser.add_argument('--verbose', '-v', action='count')
+    parser.add_argument('--lock-file', action='store', help="Create a lock file to prevent another process from running concurrently")
 
     subparsers = parser.add_subparsers(
         dest='command', help='available commands')
@@ -220,6 +241,12 @@ def main():
 
     setup_logging(args.verbose)
 
+    lock_fd = None
+    if args.lock_file:
+        lock_fd = lock_file(args.lock_file)
+        if not lock_fd:
+            parser.error("Failed to lock on {}".format(args.lock_file))
+
     bucket = None
     if hasattr(args, 'bucket'):
         if boto is None:
@@ -279,6 +306,9 @@ def main():
 
     else:
         parser.error("Unknown command")
+
+    if lock_fd:
+        unlock_file(lock_fd, args.lock_file)
 
     log.info("done")
 
