@@ -12,6 +12,7 @@ import sys
 import itertools
 import errno
 import time
+import fcntl
 
 try:
     import boto
@@ -47,16 +48,25 @@ def setup_logging(verbose_count):
 
 def lock_file(file_name):
     try:
-        return os.open(file_name,
-                       os.O_WRONLY | os.O_CREAT | os.O_EXLOCK | os.O_NDELAY)
+        fd = os.open(file_name, os.O_WRONLY | os.O_CREAT)
     except OSError as e:
-        if e.errno == errno.EAGAIN:
-            return None
-        elif e.errno == errno.ENOENT:
+        if e.errno == errno.ENOENT:
             log.error("Failed to open %r: %r", file_name, e)
             return None
         else:
             raise
+
+    try:
+        fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except IOError as e:
+        if e.errno == errno.EAGAIN:
+            log.error("Already locked")
+            os.close(fd)
+            return None
+        else:
+            raise
+
+    return fd
 
 
 def unlock_file(fd, file_name):
