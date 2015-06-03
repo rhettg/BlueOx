@@ -9,7 +9,7 @@ blueox
 """
 
 __title__ = 'blueox'
-__version__ = '0.11.1'
+__version__ = '0.11.2'
 __author__ = 'Rhett Garber'
 __author_email__ = 'rhettg@gmail.com'
 __license__ = 'ISC'
