@@ -1,20 +1,14 @@
 #!/bin/python
 import argparse
 import sys
-import io
-import struct
 import logging
-import pprint
-import json
 import datetime
 import functools
 
-import zmq
 import elasticsearch
 import elasticsearch.helpers
 
 import blueox.client
-from blueox.utils import get_deep
 
 DEFAULT_HOST = "127.0.0.1:3513"
 
@@ -129,7 +123,7 @@ def main():
     action_callback = functools.partial(build_doc, options)
     bulk_streamer = elasticsearch.helpers.streaming_bulk(
         es, out_stream,
-        request_timeout=request_timeout,
+        request_timeout=options.request_timeout,
         chunk_size=options.chunk_size,
         expand_action_callback=action_callback)
 

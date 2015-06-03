@@ -1,17 +1,12 @@
 #!/usr/bin/python
 import argparse
-import bz2
 import datetime
-import io
 import logging
 import os
-import os.path
-import re
 import socket
 import sys
 import itertools
 import errno
-import time
 import fcntl
 
 try:

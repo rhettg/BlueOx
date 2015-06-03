@@ -197,11 +197,11 @@ def main():
 
     setup_logging(options)
 
-    continue_running = True
+    continue_running = [True]
 
     def handle_sigterm(signum, frame):
         log.info("Exiting")
-        continue_running = False
+        continue_running[0] = False
 
     signal.signal(signal.SIGTERM, handle_sigterm)
 
@@ -252,13 +252,13 @@ def main():
     stats = {'last': None, 'lag': None, 'events': {}, 'hosts': {}}
     log_files = {}
     log.info("Starting IO Loop")
-    while continue_running:
+    while continue_running[0]:
         log.debug("Poll")
 
         try:
             ready = dict(poller.poll(POLL_LOOP_TIMEOUT_MS))
-        except KeyboardInterrupt, SystemExit:
-            continue_running = False
+        except (KeyboardInterrupt, SystemExit):
+            continue_running[0] = False
             break
         except zmq.ZMQError, e:
             if e.errno == errno.EINTR:
@@ -335,7 +335,7 @@ def main():
                 control_sock.send(msgpack.packb(build_stats(stats)))
             elif request['cmd'] == 'SHUTDOWN':
                 control_sock.send(msgpack.packb({'ok': True}))
-                continue_running = False
+                continue_running[0] = False
             else:
                 control_sock.send(msgpack.packb({'error': "Unknown Command"}))
 

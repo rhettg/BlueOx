@@ -1,13 +1,8 @@
 #!/bin/python
 import argparse
 import sys
-import io
-import struct
 import logging
-import pprint
 import json
-
-import zmq
 
 import blueox.client
 

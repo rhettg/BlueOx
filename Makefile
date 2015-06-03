@@ -9,7 +9,7 @@ pep8: .gitignore
 	env/bin/pep8 . --exclude=$(GITIGNORES)
 
 pyflakes:
-	env/bin/pyflakes bootstrap tests
+	env/bin/pyflakes blueox bin tests
 
 yapf:
 	find blueox -name "*.py" | xargs env/bin/yapf -i --style=google
