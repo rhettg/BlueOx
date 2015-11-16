@@ -194,12 +194,12 @@ class Context(object):
         }
 
     def start(self):
-        _add_context(self)
         self._writable = True
+        _add_context(self)
 
     def stop(self):
-        self._writable = False
         _remove_context(self)
+        self._writable = False
 
     def done(self):
         self.stop()  # Just be sure
@@ -272,7 +272,16 @@ def _remove_context(context):
 def current_context():
     init_contexts()
     try:
-        return threadLocal._contexts[-1]
+        ctx = threadLocal._contexts[-1]
+        if not ctx.writable:
+            # I think this bug is resolved, but for a while there was a rare
+            # race condition, I think dealing with signal handlers, that would
+            # result in a non-writable context being 'current'. This should
+            # provide an extra layer of safety.
+            log.error("Non-writable context in global list")
+            return None
+
+        return ctx
     except IndexError:
         return None
 
