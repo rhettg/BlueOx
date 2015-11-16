@@ -170,3 +170,20 @@ class ClearContextsTestCase(TestCase):
         blueox.clear_contexts()
 
         assert_equal(blueox.current_context(), None)
+
+
+class BrokenCurrentContextTestCase(TestCase):
+    @setup
+    def broken_context(self):
+        c = blueox.Context('test')
+        assert not c.writable
+        blueox.context._add_context(c)
+
+    @teardown
+    def clear(self):
+        blueox.clear_contexts()
+
+    def test(self):
+        # Non-writable context shouldn't show up.
+        current_c = blueox.current_context()
+        assert not current_c
