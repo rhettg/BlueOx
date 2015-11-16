@@ -1,3 +1,9 @@
+blueox (0.11.3)
+
+  * Fix for race condition in global contexts (rhettg)
+
+-- Rhett Garber <rhettg@gmail.com>  Mon, 16 Nov 2015 14:27:00 -0700
+
 blueox (0.11.2)
 
   * Fix file locking in oxstore for non-BSD based systems (rhettg)
